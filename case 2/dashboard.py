@@ -4,43 +4,42 @@ import ast
 from datetime import datetime
 import plotly.express as px
 
-# ============================================================
-# Helpers
-# ============================================================
-def safe_eval(x, default=list()):
+# Converteert string x veilig naar een Python lijst.
+def safe_evaluation(x, default=list()):
     if pd.isna(x) or not str(x).strip(): return default
     try: return list(ast.literal_eval(x))
     except: return default
 
+# Controleert of een game beschikbaar is op een van de geselecteerde platforms.
 def filter_platforms(row, selected, names): 
     return any(row["platforms_list"][i] for i, plat in enumerate(names) if plat in selected)
 
+# Geeft het eerste platform terug waarop het spel beschikbaar is uit de geselecteerde lijst.
 def primary_platform(row, selected, names): 
     return next((plat for i, plat in enumerate(names) if row["platforms_list"][i] and plat in selected), "PC")
 
-# ============================================================
-# Load Data
-# ============================================================
+# Importeer de benodigde datasets
 player_counts = pd.read_csv("PlayerCountDB.csv")
 games = pd.read_csv("steamdb_charts_250.csv")
 game_details = pd.read_csv("GameDetailDB.csv")
 genres = pd.read_csv("GenreIdDB.csv")
 
-platform_names = ["PC", "Mac", "Linux"]
+# Beschikbare platforms in deze datasets
+platform_names = ["Windows", "Mac", "Linux"]
 
-# Ensure genre_ids_list is a list of ints
+# Opschonen van data; zorgt Ensure genre_ids_list is a list of ints
 game_details = game_details.assign(
-    genre_ids_list=game_details["genre_ids"].apply(lambda x: [int(g) for g in safe_eval(x)]),
-    platforms_list=game_details["platforms"].apply(lambda x: safe_eval(x, [0,0,0]))
+    genre_ids_list=game_details["genre_ids"].apply(lambda x: [int(g) for g in safe_evaluation(x)]),
+    platforms_list=game_details["platforms"].apply(lambda x: safe_evaluation(x, [0,0,0]))
 )
 
 # Ensure genres['genre_id'] is int
 genres = genres.astype({"genre_id": int})
 
 total_players = (player_counts.groupby("appid")["player_count"].sum()
-                 .reset_index()
-                 .merge(games[["appid","name"]], on="appid", how="left")
-                 .assign(name=lambda df: df["name"].fillna("Unknown"))
+    .reset_index()
+    .merge(games[["appid","name"]], on="appid", how="left")
+    .assign(name=lambda df: df["name"].fillna("Unknown"))
 )
 
 # ============================================================
@@ -195,8 +194,8 @@ if selected_games_ts: ts_df = ts_df[ts_df["name"].isin(selected_games_ts)]
 if not ts_df.empty:
     ts_df = ts_df.set_index("date").groupby("name").resample("1h").mean(numeric_only=True).reset_index()
     fig = px.line(ts_df, x="date", y="player_count", color="name",
-                  title="Number of Players Over Time (Hourly Bins)",
-                  labels={"player_count":"Player Count","date":"Date","name":"Game"})
+    title="Number of Players Over Time (Hourly Bins)",
+    labels={"player_count":"Player Count","date":"Date","name":"Game"})
     fig.update_traces(mode="lines+markers", connectgaps=True)
     fig.update_layout(xaxis_title="Date", yaxis_title="Player Count", legend_title_text="Game")
     st.plotly_chart(fig, use_container_width=True)
@@ -208,22 +207,33 @@ else:
 # ============================================================
 st.subheader("Genreverdeling in de top 250")
 df_genres = (game_details.explode("genre_ids_list")
-             .merge(genres.rename(columns={"description":"genre_name"}), left_on="genre_ids_list", right_on="genre_id", how="left")
-             .dropna(subset=["genre_name"])
+    .merge(genres.rename(columns={"description":"genre_name"}), left_on="genre_ids_list", right_on="genre_id", how="left")
+    .dropna(subset=["genre_name"])
 )
 selected_genres_hist = st.multiselect("Selecteer genres:", df_genres["genre_name"].unique(), default=df_genres["genre_name"].unique())
 df_genres = df_genres[df_genres["genre_name"].isin(selected_genres_hist)]
 
 # Corrected genre_count
 genre_count = (df_genres["genre_name"]
-               .value_counts()
-               .rename_axis("genre")        # index name
-               .reset_index(name="count")   # column with counts
+    .value_counts()
+    .rename_axis("genre")        # index name
+    .reset_index(name="count")   # column with counts
 )
 
-fig = px.bar(genre_count.sort_values("count"), x="count", y="genre", orientation="h",
-             title="Verdeling van genres binnen de top 250 Steam-games",
-             labels={"count":"Aantal spellen","genre":""})
+fig = px.bar(
+    genre_count.sort_values("count"), x="count", y="genre", orientation="h",
+    title="Verdeling van genres binnen de top 250 Steam-games",
+    labels={"count":"Aantal spellen","genre":""},
+    
+)
+
+fig.update_xaxes(
+    dtick=20,
+    showgrid=True,      # gridlines aanzetten
+    gridcolor="lightgrey",  # kleur van gridlines
+    gridwidth=1             # dikte van gridlines
+)
+
 fig.update_traces(marker_line_width=1.5, marker_line_color='white')
 fig.update_layout(height=30*len(genre_count)+100)
 st.plotly_chart(fig, use_container_width=True)
