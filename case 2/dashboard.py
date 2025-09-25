@@ -87,64 +87,53 @@ filtered_games = game_details[game_details.apply(filter_platforms, axis=1, args=
 # ======================
 # KPI's & Top Genres
 # ======================
+
 st.subheader("KPI's")
 total_games = len(game_details)
 st.metric("Totaal aantal games", total_games)
 
-# Top genres
-genres_expanded = (
-    filtered_games.explode("genre_ids_list")
-    .merge(genres.rename(columns={"description":"genre_name"}), left_on="genre_ids_list", right_on="genre_id", how="left")
-    .dropna(subset=["genre_name"])
-    .merge(avg_players_per_game[["appid","avg_player_count"]], on="appid", how="left")
-    .assign(avg_player_count=lambda df: df["avg_player_count"].fillna(0))
+# Top genres met cumulatieve player count (rechtstreeks uit genres)
+genre_cum = (
+    genres.rename(columns={"description": "genre_name"})[["genre_name", "cum_player_count"]]
+    .sort_values("cum_player_count", ascending=False)
 )
-genre_avg = (
-    genres_expanded.groupby("genre_name", as_index=False)
-    .agg(avg_player_count=("avg_player_count","mean"))
-    .sort_values("avg_player_count", ascending=False)
-)
+
 top_n_genres = 10
-top_genres = genre_avg.head(top_n_genres)
-other_genres = genre_avg.tail(len(genre_avg)-top_n_genres)
+top_genres = genre_cum.head(top_n_genres)
+other_genres = genre_cum.tail(len(genre_cum) - top_n_genres)
+
 if not other_genres.empty:
-    other_sum = pd.DataFrame({"genre_name":["Overig"], "avg_player_count":[other_genres["avg_player_count"].mean()]})
+    other_sum = pd.DataFrame({
+        "genre_name": ["Overig"],
+        "cum_player_count": [other_genres["cum_player_count"].sum()]
+    })
     pie_data = pd.concat([top_genres, other_sum], ignore_index=True)
 else:
     pie_data = top_genres
 
-fig = px.pie(pie_data, names="genre_name", values="avg_player_count",
-             title=f"Verdeling van gemiddelde player count per genre (Top {top_n_genres})", hole=0.3)
+fig = px.pie(
+    pie_data,
+    names="genre_name",
+    values="cum_player_count",
+    title=f"Verdeling van cumulatieve player count per genre (Top {top_n_genres})",
+    hole=0.3
+)
 st.plotly_chart(fig, use_container_width=True)
 
-# Meest gespeelde game per geselecteerd genre
-selected_genres = st.multiselect(
-    "Selecteer genres voor meest gespeelde game:", 
-    genre_avg["genre_name"].tolist(), 
-    default=top_genres["genre_name"].tolist(),
-    key="most_played_genres"
-)
-if selected_genres:
-    filtered_genres_df = (
-        genres_expanded
-        .merge(games[["appid","name"]], on="appid", how="left")
-        .loc[lambda df: df["genre_name"].isin(selected_genres)]
-    )
-    most_played_games = (
-        filtered_genres_df.groupby(["genre_name","name"], as_index=False)
-        .agg(avg_player_count=("avg_player_count","mean"))
-        .sort_values(["genre_name","avg_player_count"], ascending=[True,False])
-        .groupby("genre_name").first().reset_index()[["genre_name","name","avg_player_count"]]
-    )
-    st.subheader("Meest gespeelde game per geselecteerd genre")
-    st.table(most_played_games.rename(columns={"genre_name":"Genre","name":"Game","avg_player_count":"Gemiddelde Player Count"}))
 
 # ======================
 # Leaderboards (Top 5 games = gemiddelde player count)
 # ======================
 st.subheader("Leaderboards")
-top_n = st.slider("Kies Top N games/genres", 5, 250, 20, 5, key="top_n_games")
 option = st.selectbox("Kies leaderboard type:", ("Per Game", "Per Genre"), key="leaderboard_type")
+
+slider_min_val = 3 if option == 'Per Genre' else 5
+slider_max_val = len(genres) if option == 'Per Genre' else len(games)
+slider_default_val = 6 if option == 'Per Genre' else 25
+slider_step_val = 1 if option == 'Per Genre' else 5
+
+top_n = st.slider("Kies Top N games/genres", slider_min_val, slider_max_val, slider_default_val, slider_step_val, key="top_n_games")
+
 
 if option == 'Per Game':
     game_count_data = games.sort_values('avg_player_count', ascending=False)[:top_n]
