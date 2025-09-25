@@ -26,12 +26,31 @@ def primary_platform(row, selected, names):
 # ======================
 # Data importeren
 # ======================
-player_counts = pd.read_csv("PlayerCountDB.csv")
-games = pd.read_csv("steamdb_charts_250.csv")
-game_details = pd.read_csv("GameDetailDB.csv")
-genres = pd.read_csv("GenreIdDB.csv")
+player_counts = pd.read_csv("Databases\\PlayerCountDB.csv")
+games = pd.read_csv("Databases\\steamdb_charts_250.csv")
+game_details = pd.read_csv("Databases\\GameDetailDB.csv")
+genres = pd.read_csv("Databases\\GenreIdDB.csv")
+
+avg_player_counts = player_counts.groupby("appid")["player_count"].mean()
+games["avg_player_count"] = games["appid"].map(avg_player_counts).fillna(0).round().astype(int)
+
+merged_game_details = games.merge(game_details, how='left').dropna()
+
+merged_game_details = merged_game_details[merged_game_details['appid'] != 914690]
 
 platform_names = ["Windows", "Mac", "Linux"]
+genres['cum_player_count'] = 0
+
+# unique genre_ids
+
+# sum player counts for genre_ids
+#loop over merged_game_details
+#locate genre ids in genres
+#add player count
+
+merged_game_details['genre_ids'] = merged_game_details['genre_ids'].apply(ast.literal_eval)
+
+genres['cum_player_count'] = genres['genre_id'].apply(lambda id: merged_game_details[merged_game_details['genre_ids'].apply(lambda g: str(id) in g)]['avg_player_count'].sum())
 
 game_details["genre_ids_list"] = game_details["genre_ids"].apply(lambda x: [int(g) for g in safe_evaluation(x)])
 game_details["platforms_list"] = game_details["platforms"].apply(lambda x: safe_evaluation(x, [0,0,0]))
@@ -127,94 +146,100 @@ st.subheader("Leaderboards")
 top_n = st.slider("Kies Top N games/genres", 5, 250, 20, 5, key="top_n_games")
 option = st.selectbox("Kies leaderboard type:", ("Per Game", "Per Genre"), key="leaderboard_type")
 
-if option == "Per Game":
-    data = (total_players.merge(filtered_games[["appid"]], on="appid", how="inner")
-            .sort_values("player_count", ascending=False)
-            .head(top_n)
-    )
-    fig = px.bar(data, x="name", y="player_count", color_discrete_sequence=["darkblue"], title=f"Top {top_n} Most Played Games",
-                 labels={"name":"Game","player_count":"Total Player Count"})
-else:
-    genre_data = (filtered_games.explode("genre_ids_list")
-                  .merge(total_players[["appid","player_count"]], on="appid", how="left")
-                  .merge(genres, left_on="genre_ids_list", right_on="genre_id", how="left")
-                  .assign(player_count=lambda df: df["player_count"].fillna(0),
-                          description=lambda df: df["description"].fillna("Unknown"))
-                  .groupby("description")["player_count"].sum()
-                  .reset_index()
-                  .sort_values("player_count", ascending=False)
-                  .head(top_n)
-    )
-    fig = px.bar(genre_data, x="description", y="player_count", color_discrete_sequence=["green"], title=f"Top {top_n} Most Played Genres",
-                 labels={"description":"Genre","player_count":"Total Player Count"})
-
-fig.update_layout(xaxis_tickangle=-45)
+if option == 'Per Game':
+    game_count_data = games.sort_values('avg_player_count', ascending=False)[:top_n]
+    fig = px.bar(game_count_data, 'name', 'avg_player_count')
+elif option == 'Per Genre':
+    genre_count_data = genres.sort_values('cum_player_count', ascending=False)[:top_n]
+    fig = px.bar(genre_count_data, 'description', 'cum_player_count')
 st.plotly_chart(fig)
+
 
 # ======================
 # Boxplot (Top 5 games = gemiddelde player count)
 # ======================
-st.subheader("Boxplot: Player Count per Platform")
-top_n_box = st.slider("Kies Top N games voor boxplot", 5, 250, 20, 5, key="top_n_box")
 
-if top_n_box == 5:
-    boxplot_df = filtered_games.merge(avg_players_per_game, on="appid", how="left").assign(avg_player_count=lambda df: df["avg_player_count"].fillna(0)).sort_values("avg_player_count", ascending=False).head(5)
-    y_col = "avg_player_count"
-else:
-    boxplot_df = filtered_games.merge(total_players, on="appid", how="left").assign(player_count=lambda df: df["player_count"].fillna(0)).sort_values("player_count", ascending=False).head(top_n_box)
-    y_col = "player_count"
+platforms_dict = {'[1, 0, 0]':'Windows',
+                  '[1, 0, 1]': 'Windows, Linux',
+                  '[1, 1, 0]': 'Windows, Mac',
+                  '[1, 1, 1]': 'All'}
 
-boxplot_expanded = pd.DataFrame([
-    {"name": row["name"], "platform": plat, y_col: row[y_col], "genre_ids_list": row["genre_ids_list"]}
-    for _, row in boxplot_df.iterrows()
-    for i, plat in enumerate(platform_names) if row["platforms_list"][i]==1
-])
+merged_game_details['platform_label'] = merged_game_details['platforms'].map(platforms_dict)
 
-selected_genres_box = st.multiselect("Selecteer genres voor boxplot:", genres["description"].unique(), key="boxplot_genres")
-if selected_genres_box:
-    genre_ids_filter = genres[genres['description'].isin(selected_genres_box)]["genre_id"].tolist()
-    boxplot_expanded = boxplot_expanded[boxplot_expanded["genre_ids_list"].apply(lambda x: any(g in genre_ids_filter for g in x))]
+fig = px.histogram(merged_game_details, 'platform_label', labels=platforms_dict, 
+                   color='platform_label',
+                   category_orders=dict(platform_label=['Windows', 'Windows, Mac', 'Windows, Linux', 'All'],
+                   ))
 
-fig = px.box(boxplot_expanded, x="platform", y=y_col, color="platform",
-             color_discrete_map={"PC":"blue","Mac":"green","Linux":"red"},
-             hover_data=["name", y_col], labels={y_col:"Player Count","platform":"Platform"},
-             title="Player Count per Platform")
 st.plotly_chart(fig)
+
 
 # ======================
 # Scatterplot: Gemiddelde Player Count vs Game Age
 # ======================
-st.subheader("Scatterplot: Gemiddelde Player Count vs Game Age")
-scatter_platforms = st.multiselect("Selecteer platform(s) voor scatterplot:", platform_names, default=platform_names, key="scatter_platforms")
+
+# merged_game_details is assumed to already exist in the environment
+df = merged_game_details.copy()
 show_trendline = st.selectbox("Toon regressielijn?", ("Nee", "Ja"), key="trendline_toggle")
+# Parse release_date en game_age
+df['release_date_parsed'] = pd.to_datetime(df['release_date'], errors='coerce')
+df['game_age'] = datetime.now().year - df['release_date_parsed'].dt.year
 
-scatter_df = (
-    filtered_games.merge(player_counts, on="appid", how="left")
-    .merge(games[["appid","name"]], on="appid", how="left")
-    .assign(
-        release_date=lambda df: pd.to_datetime(df["release_date"], errors="coerce"),
-        game_age=lambda df: datetime.now().year - df["release_date"].dt.year,
-        player_count=lambda df: pd.to_numeric(df["player_count"], errors="coerce")
-    )
-    .dropna(subset=["player_count","game_age"])
-)
+# Drop NA en filter log issues
+df = df.dropna(subset=['avg_player_count', 'game_age', 'platform_label'])
+df = df[df['avg_player_count'] > 0]
 
-scatter_df = scatter_df[scatter_df.apply(lambda row: any(row["platforms_list"][platform_names.index(p)]==1 for p in scatter_platforms), axis=1)]
-scatter_df = scatter_df.assign(primary_platform=lambda df: df.apply(primary_platform, axis=1, args=(scatter_platforms, platform_names)))
-scatter_df_avg = scatter_df.groupby(["appid","name","game_age","primary_platform"], as_index=False).agg(avg_player_count=("player_count","mean"))
-
-corr = scatter_df_avg[["game_age","avg_player_count"]].corr().iloc[0,1]
-st.write(f"Correlatie tussen game leeftijd en gemiddelde player count: **{corr:.2f}**")
+# Selecteer platforms
+platforms_dict = {
+    '[1, 0, 0]':'Windows',
+    '[1, 0, 1]': 'Windows, Linux',
+    '[1, 1, 0]': 'Windows, Mac',
+    '[1, 1, 1]': 'All'
+}
+category_order = ['Windows', 'Windows, Mac', 'Windows, Linux', 'All']
 
 trendline_param = "ols" if show_trendline == "Ja" else None
-fig = px.scatter(scatter_df_avg, x="game_age", y="avg_player_count", color="primary_platform",
-                 color_discrete_map={"PC":"blue","Mac":"green","Linux":"red"},
-                 hover_data=["name","avg_player_count","game_age","primary_platform"],
-                 labels={"game_age":"Game Age (years)","avg_player_count":"Gemiddelde Player Count","primary_platform":"Platform"},
-                 title=f"Gemiddelde Player Count vs Game Age ({', '.join(scatter_platforms)})",
-                 trendline=trendline_param)
-fig.update_traces(hovertemplate="<b>%{customdata[0]}</b><br>Gem. Players: %{customdata[1]:,.0f}<br>Age: %{customdata[2]} jaar<br>Platform: %{customdata[3]}<extra></extra>")
-st.plotly_chart(fig, use_container_width=True, key="scatter_avg_player_count_trendline")
+
+# Scatterplot met regressielijn
+fig = px.scatter(
+    df,
+    x='game_age',
+    y='avg_player_count',
+    opacity=0.5,
+    color='platform_label',
+    trendline=trendline_param,
+    category_orders={'platform_label': category_order},
+    custom_data=['name', 'avg_player_count', 'game_age', 'platform_label', 'appid'],
+    labels={
+        'game_age': 'Game Age (years)',
+        'avg_player_count': 'Gemiddelde Player Count',
+        'platform_label': 'Platform'
+    },
+    title=f"Gemiddelde Player Count vs Game Age"
+)
+
+fig.update_yaxes(type='log')
+fig.update_traces(
+    marker=dict(size=8),
+    hovertemplate="<b>%{customdata[0]}</b><br>"
+                  "Gem. Players: %{customdata[1]:,.0f}<br>"
+                  "Leeftijd: %{customdata[2]} jaar<br>"
+                  "Platform: %{customdata[3]}<extra></extra>"
+)
+
+st.plotly_chart(fig, use_container_width=True)
+
+
+if show_trendline == 'Ja':
+# Bereken correlaties per platform
+    correlations = df.groupby('platform_label').apply(
+        lambda g: g['game_age'].corr(g['avg_player_count'])
+    ).reindex(category_order)
+
+    st.write("### Correlaties tussen game leeftijd en gemiddelde player count")
+    st.dataframe(correlations.apply(lambda x: f"{x:.2f}"))
+
+
 
 # ======================
 # Histogram: Genre Distribution
@@ -265,7 +290,7 @@ if selected_games_ts: ts_df = ts_df[ts_df["name"].isin(selected_games_ts)]
 if not ts_df.empty:
     ts_df = ts_df.set_index("date").groupby("name").resample("1h").mean(numeric_only=True).reset_index()
     fig = px.line(ts_df, x="date", y="player_count", color="name",
-    title="Number of Players Over Time (Hourly Bins)",
+    title="Number of Players Over Time",
     labels={"player_count":"Player Count","date":"Date","name":"Game"})
     fig.update_traces(mode="lines+markers", connectgaps=True)
     fig.update_layout(xaxis_title="Date", yaxis_title="Player Count", legend_title_text="Game")
