@@ -7,10 +7,10 @@ import plotly.express as px
 # ======================
 # Data importeren
 # ======================
-player_counts = pd.read_csv("PlayerCountDB.csv")
-games = pd.read_csv("steamdb_charts_250.csv")
-game_details = pd.read_csv("GameDetailDB.csv")
-genres = pd.read_csv("GenreIdDB.csv")
+player_counts = pd.read_csv("Databases\\PlayerCountDB.csv")
+games = pd.read_csv("Databases\\steamdb_charts_250.csv")
+game_details = pd.read_csv("Databases\\GameDetailDB.csv")
+genres = pd.read_csv("Databases\\GenreIdDB.csv")
 
 avg_player_counts = player_counts.groupby("appid")["player_count"].mean()
 games["avg_player_count"] = games["appid"].map(avg_player_counts).fillna(0).round().astype(int)
@@ -75,7 +75,7 @@ fig = px.pie(
     pie_data,
     names="genre_name",
     values="cum_player_count",
-    title=f"Verdeling van cumulatieve player count per genre (Top {top_n_genres})",
+    title=f"Verdeling van cumulatieve hoeveelheid spelers per genre (Top {top_n_genres})",
     hole=0.3
 )
 st.plotly_chart(fig, use_container_width=True)
@@ -85,15 +85,23 @@ st.plotly_chart(fig, use_container_width=True)
 # Leaderboards (Top 5 games = gemiddelde player count)
 # ======================
 st.subheader("Leaderboards")
-top_n = st.slider("Kies Top N games/genres", 5, 250, 20, 5, key="top_n_games")
 option = st.selectbox("Kies leaderboard type:", ("Per Game", "Per Genre"), key="leaderboard_type")
+
+
+is_genre = True if option == "Per Genre" else False
+min_slider_val = 3 if is_genre else 6
+max_slider_val = len(genres) if is_genre else len(games)
+default_slider_val = 6 if is_genre else 25
+step_slider_val = 1 if is_genre else 5
+
+top_n = st.slider("Kies Top N games/genres", min_slider_val, max_slider_val, default_slider_val, step_slider_val, key="top_n_games")
 
 if option == 'Per Game':
     game_count_data = games.sort_values('avg_player_count', ascending=False)[:top_n]
-    fig = px.bar(game_count_data, 'name', 'avg_player_count')
+    fig = px.bar(game_count_data, 'name', 'avg_player_count', labels={'name': 'Game', 'avg_player_count': 'Aantal spelers'})
 elif option == 'Per Genre':
     genre_count_data = genres.sort_values('cum_player_count', ascending=False)[:top_n]
-    fig = px.bar(genre_count_data, 'description', 'cum_player_count')
+    fig = px.bar(genre_count_data, 'description', 'cum_player_count', labels={'description': 'Genre', 'avg_player_count': 'Aantal spelers'})
 st.plotly_chart(fig)
 
 
@@ -111,8 +119,11 @@ merged_game_details['platform_label'] = merged_game_details['platforms'].map(pla
 fig = px.histogram(merged_game_details, 'platform_label', labels=platforms_dict, 
                    color='platform_label',
                    category_orders=dict(platform_label=['Windows', 'Windows, Mac', 'Windows, Linux', 'All'],
+                   labels={'platform_label': 'Ondersteunde platforms', 'count': 'Aantal games'}
                    ))
 
+fig.update_layout(yaxis_title="Aantal games", showlegend=False,
+                  xaxis_title='Ondersteunde platforms')
 st.plotly_chart(fig)
 
 
@@ -153,8 +164,8 @@ fig = px.scatter(
     category_orders={'platform_label': category_order},
     custom_data=['name', 'avg_player_count', 'game_age', 'platform_label', 'appid'],
     labels={
-        'game_age': 'Game Age (years)',
-        'avg_player_count': 'Gemiddelde Player Count',
+        'game_age': 'Leeftijd game (jaren)',
+        'avg_player_count': 'Gemiddelde hoeveelheid spelers',
         'platform_label': 'Platform'
     },
     title=f"Gemiddelde Player Count vs Game Age"
@@ -232,7 +243,7 @@ fig = px.bar(
     y="genre",
     orientation="h",
     title="Verdeling van genres binnen de top 250 Steam-games",
-    labels={"count": "Aantal spellen", "genre": ""},
+    labels={"count": "Aantal games", "genre": ""},
 )
 
 fig.update_xaxes(dtick=20, showgrid=True, gridcolor="lightgrey", gridwidth=1)
@@ -245,7 +256,7 @@ st.plotly_chart(fig, use_container_width=True)
 # ======================
 # Time Series
 # ======================
-st.subheader("Spelertrends over tijd")
+st.subheader("Spelertrends over de tijd heen")
 player_count_df = (player_counts.merge(games[["appid","name"]], on="appid", how="left")
                    .assign(date=lambda df: pd.to_datetime(df["date"], errors="coerce"),
                            player_count=lambda df: pd.to_numeric(df["player_count"], errors="coerce"))
@@ -253,10 +264,18 @@ player_count_df = (player_counts.merge(games[["appid","name"]], on="appid", how=
                    .drop_duplicates(["appid","date"])
 )
 
+default_games_selection = ['PEAK', 'Counter-Strike 2', 'Dota 2', 'PUBG: BATTLEGROUNDS', 'Hollow Knight: Silksong']
+
 game_names = sorted(player_count_df["name"].dropna().unique())
-selected_games_ts = st.multiselect("Select games to display", game_names)
-min_date, max_date = player_count_df["date"].min(), player_count_df["date"].max()
-date_range = st.date_input("Select date range", [min_date, max_date])
+selected_games_ts = st.multiselect("Selecteer games om te laten zien", game_names, default=default_games_selection)
+
+date_range = st.date_input(
+    "Selecteer een periode",
+    [datetime(2025, 9, 22), datetime(2025, 9, 26)],
+    min_value=datetime(2025, 9, 22),
+    max_value=datetime(2025, 9, 26),
+)
+
 
 ts_df = player_count_df[player_count_df["date"].between(pd.to_datetime(date_range[0]), pd.to_datetime(date_range[1]))]
 if selected_games_ts: ts_df = ts_df[ts_df["name"].isin(selected_games_ts)]
@@ -264,10 +283,10 @@ if selected_games_ts: ts_df = ts_df[ts_df["name"].isin(selected_games_ts)]
 if not ts_df.empty:
     ts_df = ts_df.set_index("date").groupby("name").resample("1h").mean(numeric_only=True).reset_index()
     fig = px.line(ts_df, x="date", y="player_count", color="name",
-    title="Number of Players Over Time",
-    labels={"player_count":"Player Count","date":"Date","name":"Game"})
+    title="Aantal spelers over de tijd heen",
+    labels={"player_count":"Aantal spelers","date":"Datum","name":"Spel"})
     fig.update_traces(mode="lines+markers", connectgaps=True)
-    fig.update_layout(xaxis_title="Date", yaxis_title="Player Count", legend_title_text="Game")
+    fig.update_layout(xaxis_title="Datum", yaxis_title="Aantal spelers", legend_title_text="Spel")
     st.plotly_chart(fig, use_container_width=True)
 else:
-    st.warning("No data available for the selected filters.")
+    st.warning("Niks geselecteerd")
