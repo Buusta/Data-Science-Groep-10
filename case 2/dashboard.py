@@ -5,31 +5,12 @@ from datetime import datetime
 import plotly.express as px
 
 # ======================
-# Helper functies
-# ======================
-def safe_evaluation(x, default=None):
-    if default is None:
-        default = []
-    if pd.isna(x) or not str(x).strip(): 
-        return default
-    try: 
-        return list(ast.literal_eval(x))
-    except: 
-        return default
-
-def filter_platforms(row, selected, names): 
-    return any(row["platforms_list"][i] for i, plat in enumerate(names) if plat in selected)
-
-def primary_platform(row, selected, names): 
-    return next((plat for i, plat in enumerate(names) if row["platforms_list"][i] and plat in selected), "PC")
-
-# ======================
 # Data importeren
 # ======================
-player_counts = pd.read_csv("Databases\\PlayerCountDB.csv")
-games = pd.read_csv("Databases\\steamdb_charts_250.csv")
-game_details = pd.read_csv("Databases\\GameDetailDB.csv")
-genres = pd.read_csv("Databases\\GenreIdDB.csv")
+player_counts = pd.read_csv("PlayerCountDB.csv")
+games = pd.read_csv("steamdb_charts_250.csv")
+game_details = pd.read_csv("GameDetailDB.csv")
+genres = pd.read_csv("GenreIdDB.csv")
 
 avg_player_counts = player_counts.groupby("appid")["player_count"].mean()
 games["avg_player_count"] = games["appid"].map(avg_player_counts).fillna(0).round().astype(int)
@@ -41,19 +22,9 @@ merged_game_details = merged_game_details[merged_game_details['appid'] != 914690
 platform_names = ["Windows", "Mac", "Linux"]
 genres['cum_player_count'] = 0
 
-# unique genre_ids
-
-# sum player counts for genre_ids
-#loop over merged_game_details
-#locate genre ids in genres
-#add player count
-
 merged_game_details['genre_ids'] = merged_game_details['genre_ids'].apply(ast.literal_eval)
 
 genres['cum_player_count'] = genres['genre_id'].apply(lambda id: merged_game_details[merged_game_details['genre_ids'].apply(lambda g: str(id) in g)]['avg_player_count'].sum())
-
-game_details["genre_ids_list"] = game_details["genre_ids"].apply(lambda x: [int(g) for g in safe_evaluation(x)])
-game_details["platforms_list"] = game_details["platforms"].apply(lambda x: safe_evaluation(x, [0,0,0]))
 
 total_players = (
     player_counts.groupby("appid")["player_count"].sum()
@@ -71,18 +42,7 @@ avg_players_per_game = (
 # ======================
 # Pagina titel
 # ======================
-st.title("Top 250 Steam Games")
-
-# ======================
-# Filters
-# ======================
-selected_platforms = st.multiselect(
-    "Selecteer platform(s):", 
-    platform_names, 
-    default=platform_names,
-    key="platforms_top_n"
-)
-filtered_games = game_details[game_details.apply(filter_platforms, axis=1, args=(selected_platforms, platform_names))]
+st.title("Steam Games")
 
 # ======================
 # KPI's & Top Genres
@@ -125,15 +85,8 @@ st.plotly_chart(fig, use_container_width=True)
 # Leaderboards (Top 5 games = gemiddelde player count)
 # ======================
 st.subheader("Leaderboards")
+top_n = st.slider("Kies Top N games/genres", 5, 250, 20, 5, key="top_n_games")
 option = st.selectbox("Kies leaderboard type:", ("Per Game", "Per Genre"), key="leaderboard_type")
-
-slider_min_val = 3 if option == 'Per Genre' else 5
-slider_max_val = len(genres) if option == 'Per Genre' else len(games)
-slider_default_val = 6 if option == 'Per Genre' else 25
-slider_step_val = 1 if option == 'Per Genre' else 5
-
-top_n = st.slider("Kies Top N games/genres", slider_min_val, slider_max_val, slider_default_val, slider_step_val, key="top_n_games")
-
 
 if option == 'Per Game':
     game_count_data = games.sort_values('avg_player_count', ascending=False)[:top_n]
@@ -228,34 +181,66 @@ if show_trendline == 'Ja':
     st.write("### Correlaties tussen game leeftijd en gemiddelde player count")
     st.dataframe(correlations.apply(lambda x: f"{x:.2f}"))
 
-
-
 # ======================
 # Histogram: Genre Distribution
 # ======================
+
 st.subheader("Genreverdeling in de top 250")
-df_genres = (game_details.explode("genre_ids_list")
-    .merge(genres.rename(columns={"description":"genre_name"}), left_on="genre_ids_list", right_on="genre_id", how="left")
+
+# Parse genre_ids naar een lijst
+game_details['genre_ids_list'] = game_details['genre_ids'].apply(
+    lambda x: ast.literal_eval(x) if isinstance(x, str) else []
+)
+
+# Explode naar losse genre_id's
+df_genres = game_details.explode("genre_ids_list").copy()
+
+# Zorg dat genre_ids_list hetzelfde type heeft als genres['genre_id']
+df_genres["genre_ids_list"] = pd.to_numeric(df_genres["genre_ids_list"], errors="coerce").astype("Int64")
+
+# Merge met genres
+df_genres = (
+    df_genres.merge(
+        genres.rename(columns={"description": "genre_name"}),
+        left_on="genre_ids_list",
+        right_on="genre_id",
+        how="left"
+    )
     .dropna(subset=["genre_name"])
 )
-selected_genres_hist = st.multiselect("Selecteer genres:", df_genres["genre_name"].unique(), default=df_genres["genre_name"].unique())
+
+# Genre filter
+selected_genres_hist = st.multiselect(
+    "Selecteer genres:",
+    sorted(df_genres["genre_name"].unique()),
+    default=sorted(df_genres["genre_name"].unique())
+)
 df_genres = df_genres[df_genres["genre_name"].isin(selected_genres_hist)]
 
-genre_count = (df_genres["genre_name"]
+# Aantal per genre
+genre_count = (
+    df_genres["genre_name"]
     .value_counts()
     .rename_axis("genre")
     .reset_index(name="count")
 )
 
+# Plot
 fig = px.bar(
-    genre_count.sort_values("count"), x="count", y="genre", orientation="h",
+    genre_count.sort_values("count"),
+    x="count",
+    y="genre",
+    orientation="h",
     title="Verdeling van genres binnen de top 250 Steam-games",
-    labels={"count":"Aantal spellen","genre":""},
+    labels={"count": "Aantal spellen", "genre": ""},
 )
+
 fig.update_xaxes(dtick=20, showgrid=True, gridcolor="lightgrey", gridwidth=1)
-fig.update_traces(marker_line_width=1.5, marker_line_color='white')
-fig.update_layout(height=30*len(genre_count)+100)
+fig.update_traces(marker_line_width=1.5, marker_line_color="white")
+fig.update_layout(height=30 * len(genre_count) + 100)
 st.plotly_chart(fig, use_container_width=True)
+
+
 
 # ======================
 # Time Series
