@@ -278,7 +278,7 @@ date_range = st.date_input(
     "Selecteer een periode",
     [datetime(2025, 9, 22), datetime(2025, 9, 26)],
     min_value=datetime(2025, 9, 22),
-    max_value=datetime(2025, 9, 26),
+    max_value=datetime(2025, 9, 27),
 )
 
 
