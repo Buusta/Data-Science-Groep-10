@@ -3,14 +3,18 @@ import streamlit as st
 import ast
 from datetime import datetime
 import plotly.express as px
+import os
 
-# ======================
-# Data importeren
-# ======================
-player_counts = pd.read_csv("Databases/PlayerCountDB.csv")
-games = pd.read_csv("Databases/steamdb_charts_250.csv")
-game_details = pd.read_csv("Databases/GameDetailDB.csv")
-genres = pd.read_csv("Databases/GenreIdDB.csv")
+# Get the folder where this script is located
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# Build paths relative to the script
+db_path = os.path.join(BASE_DIR, "Databases")
+
+player_counts = pd.read_csv(os.path.join(db_path, "PlayerCountDB.csv"))
+games = pd.read_csv(os.path.join(db_path, "steamdb_charts_250.csv"))
+game_details = pd.read_csv(os.path.join(db_path, "GameDetailDB.csv"))
+genres = pd.read_csv(os.path.join(db_path, "GenreIdDB.csv"))
 
 
 avg_player_counts = player_counts.groupby("appid")["player_count"].mean()
