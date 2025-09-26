@@ -7,10 +7,10 @@ import plotly.express as px
 # ======================
 # Data importeren
 # ======================
-player_counts = pd.read_csv("../Databases/PlayerCountDB.csv")
-games = pd.read_csv("../Databases/steamdb_charts_250.csv")
-game_details = pd.read_csv("../Databases/GameDetailDB.csv")
-genres = pd.read_csv("../Databases/GenreIdDB.csv")
+player_counts = pd.read_csv("Databases/PlayerCountDB.csv")
+games = pd.read_csv("Databases/steamdb_charts_250.csv")
+game_details = pd.read_csv("Databases/GameDetailDB.csv")
+genres = pd.read_csv("Databases/GenreIdDB.csv")
 
 
 avg_player_counts = player_counts.groupby("appid")["player_count"].mean()
