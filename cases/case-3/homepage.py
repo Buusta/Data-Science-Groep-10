@@ -2,8 +2,9 @@ import streamlit as st
 import pickle
 import pandas as pd
 
-loaded_data = pd.read_pickle("Charging_data.pkl")
-loaded_data2 = pd.read_csv('laadpaaldata.csv')
+ChargingData = pd.read_pickle('Charging_data.pkl')
+LaadpaalData = pd.read_csv('laadpaaldata.csv')
+Cars = pd.read_pickle('cars.pkl')
 
 st.set_page_config(
     page_title="Laadpalen Dashboard",
@@ -22,5 +23,6 @@ def toggle():
 st.button(label="Toggle Text", on_click=toggle)
 
 if st.session_state.show_text:
-    st.write(loaded_data)
-    st.write(loaded_data2)
+    st.write(ChargingData)
+    st.write(LaadpaalData)
+    st.write(Cars)
