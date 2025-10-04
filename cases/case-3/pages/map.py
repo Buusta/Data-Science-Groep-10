@@ -4,16 +4,21 @@ import pandas as pd
 import folium
 from streamlit_folium import st_folium
 from folium.plugins import MarkerCluster
+import geopandas as gpd
+from shapely.geometry import Point
 
+# =============================
+# Streamlit instellingen
+# =============================
 st.set_page_config(
     page_title="Laadpalen Nederland",
     page_icon="🔌",
-    layout="wide",       # Brede layout
+    layout="wide",
     initial_sidebar_state="expanded"
 )
 
 # =============================
-# Functies om data te laden en te cachen
+# Functie om data te laden en te cachen
 # =============================
 @st.cache_data(ttl=3600)
 def fetch_data(url, as_dataframe=True):
@@ -27,32 +32,31 @@ def fetch_data(url, as_dataframe=True):
 # =============================
 # Laad laadpalen data
 # =============================
-ocm_url = "https://api.openchargemap.io/v3/poi/?output=json&countrycode=NL&maxresults=1000&compact=true&verbose=false&key=93b912b5-9d70-4b1f-960b-fb80a4c9c017"
+ocm_url = "https://api.openchargemap.io/v3/poi/?output=json&countrycode=NL&maxresults=2000&compact=true&verbose=false&key=93b912b5-9d70-4b1f-960b-fb80a4c9c017"
 laadpalen = fetch_data(ocm_url)
-
 laadpalen.columns = laadpalen.columns.str.replace('.', '_', regex=False)
 
-col1, col2, col3 = st.columns([1, 4, 1])
-
+# =============================
+# Layout: drie kolommen, alles in het midden
+# =============================
+col1, col2, col3 = st.columns([1, 6, 1])
 with col2:
     st.title("Laadpalen in Nederland")
-    
-    # =============================
-    # Toggle keuze
-    # =============================
     kaart_keuze = st.radio("Kies welke kaart je wilt zien:", ["Laadpalenkaart", "Laadpalen per gemeente"])
-    
+
     # =============================
-    # Laadpalenkaart
+    # Basis Folium map
     # =============================
     m = folium.Map(
         location=(52.379189, 5),
         zoom_start=8,
     )
 
+    # =============================
+    # Laadpalenkaart
+    # =============================
     if kaart_keuze == "Laadpalenkaart":
         marker_cluster = MarkerCluster().add_to(m)
-
         for laadpaal in laadpalen.itertuples():
             usage_cost = getattr(laadpaal, 'UsageCost', None)
             kosten_text = (
@@ -82,28 +86,40 @@ with col2:
             ).add_to(marker_cluster)
 
     # =============================
-    # Choropleth kaart
+    # Choropleth per gemeente
     # =============================
     else:
-        df = pd.DataFrame({"gemeente": laadpalen['AddressInfo_Town']})
-        df = df[df['gemeente'].notna() & (df['gemeente'] != "")]
-
-        data = df['gemeente'].value_counts().reset_index()
-        
-        data.columns = ['gemeente', 'aantal_laadpalen']
-
+        # Laad GeoJSON met gemeenten
         geojson_url = "https://cartomap.github.io/nl/wgs84/gemeente_2023.geojson"
-        geojson_data = fetch_data(geojson_url, as_dataframe=False)
+        gemeenten = gpd.read_file(geojson_url)
 
+        # Maak GeoDataFrame van laadpalen
+        geometry = [Point(xy) for xy in zip(laadpalen.AddressInfo_Longitude, laadpalen.AddressInfo_Latitude)]
+        laadpalen_gdf = gpd.GeoDataFrame(laadpalen, geometry=geometry, crs=gemeenten.crs)
+
+        # Spatial join: laadpalen koppelen aan gemeente
+        laadpalen_met_gemeente = gpd.sjoin(laadpalen_gdf, gemeenten, how="left", predicate="within")
+
+        # Tel aantal laadpalen per gemeente
+        aantal_per_gemeente = laadpalen_met_gemeente.groupby("statnaam").size().reset_index(name="aantal_laadpalen")
+
+        # Merge met gemeenten GeoDataFrame
+        gemeenten = gemeenten.merge(aantal_per_gemeente, left_on="statnaam", right_on="statnaam", how="left")
+        gemeenten["aantal_laadpalen"] = gemeenten["aantal_laadpalen"].fillna(0)
+
+        # Voeg choropleth toe
         folium.Choropleth(
-            geo_data=geojson_data,
-            data=data,
-            columns=['gemeente', 'aantal_laadpalen'],
+            geo_data=gemeenten,
+            data=gemeenten,
+            columns=['statnaam', 'aantal_laadpalen'],
             key_on='feature.properties.statnaam',
             fill_color='YlGn',
             fill_opacity=0.7,
             line_opacity=0.2,
-            legend_name="Aantal laadpalen"
+            legend_name="Aantal laadpalen per gemeente"
         ).add_to(m)
 
+    # =============================
+    # Render map
+    # =============================
     st_folium(m, width=900, height=1000)
