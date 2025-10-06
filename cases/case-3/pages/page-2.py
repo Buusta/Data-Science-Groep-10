@@ -70,7 +70,7 @@ st.plotly_chart(cars_per_brand_fig)
 # cars per month fig
 groupby_month_brand = Cars.groupby(['jaar_tenaamstelling', 'maand_tenaamstelling', 'merk']).size()
 month_brand = groupby_month_brand.reset_index(name='registraties')
-month_brand['yearmonth'] = pd.to_datetime(month_brand['jaar_tenaamstelling'].astype(str) + ' ' + month_brand['maand_tenaamstelling'].astype(str), '-01')
+month_brand['yearmonth'] = pd.to_datetime(month_brand['jaar_tenaamstelling'].astype(str) + ' ' + month_brand['maand_tenaamstelling'].astype(str), format='%Y %m')
 
 top_n_merken_bar = st.number_input('Top N merken', 1, len(cum_sorted_brand), key=1)
 gekozen_merk_bar = st.multiselect("Kies een merk", merken, default=list(cum_sorted_brand[:top_n_merken_bar].index))
