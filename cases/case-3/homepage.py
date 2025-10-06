@@ -1,10 +1,13 @@
 import streamlit as st
-import pickle
 import pandas as pd
+import os
 
-ChargingData = pd.read_pickle('Charging_data.pkl')
-LaadpaalData = pd.read_csv('laadpaaldata.csv')
-Cars = pd.read_pickle('cars.pkl')
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+ChargingData = pd.read_pickle(os.path.join(BASE_DIR, "Charging_data.pkl"))
+LaadpaalData = pd.read_csv(os.path.join(BASE_DIR, "laadpaaldata.csv"))
+Cars = pd.read_pickle(os.path.join(BASE_DIR, "cars.pkl"))
 
 st.set_page_config(
     page_title="Laadpalen Dashboard",

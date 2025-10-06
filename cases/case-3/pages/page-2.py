@@ -1,8 +1,11 @@
 import streamlit as st
 import plotly.express as px
 import pandas as pd
+import os
 
-Cars = pd.read_pickle('cars.pkl')
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+Cars = pd.read_pickle(os.path.join(BASE_DIR, "cars.pkl"))
 
 kolommen_drop = [
     'massa_ledig_voertuig',
