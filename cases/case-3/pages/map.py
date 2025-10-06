@@ -1,58 +1,9 @@
 import streamlit as st
+import requests
 import pandas as pd
-import folium
-from folium.plugins import FastMarkerCluster
-from streamlit_folium import st_folium
 import geopandas as gpd
-from shapely.geometry import Point
-import numpy as np
-
-@st.cache_data(ttl=3600)
-def load_data(source, type="csv"):
-    try:
-        if type == "geojson":
-            gdf = gpd.read_file(source)
-            gdf = gdf.to_crs(epsg=4326)
-            return gdf
-        elif type == "csv":
-            return pd.read_csv(source)
-        elif type == "pkl":
-            return pd.read_pickle(source)
-        else:
-            return pd.DataFrame()
-    except Exception as e:
-        st.error(f"Fout bij het laden van data: {e}")
-        return pd.DataFrame()
-
-@st.cache_data(ttl=3600)
-def sample_laadpalen(laadpalen, n=2000, seed=1):
-    """Return een willekeurige subset van laadpalen."""
-    num_points = min(n, len(laadpalen))
-    return laadpalen.sample(n=num_points, random_state=seed)
-
-@st.cache_data(ttl=3600)
-def bereken_laadpalen_per_gemeente(laadpalen_df, _gemeenten_gdf):
-    # Verwijder laadpalen zonder coördinaten
-    laadpalen_df = laadpalen_df.dropna(subset=['AddressInfo_Longitude', 'AddressInfo_Latitude'])
-
-    # Maak GeoDataFrame van laadpalen
-    laadpalen_gdf = gpd.GeoDataFrame(
-        laadpalen_df,
-        geometry=[Point(xy) for xy in zip(laadpalen_df.AddressInfo_Longitude, laadpalen_df.AddressInfo_Latitude)],
-        crs=_gemeenten_gdf.crs
-    )
-
-    # Voeg elke laadpaal toe aan de gemeente waarin hij ligt
-    laadpalen_met_gemeente = gpd.sjoin(laadpalen_gdf, _gemeenten_gdf, how="left", predicate="within")
-
-    # Tel aantal laadpalen per gemeente
-    aantal_per_gemeente = laadpalen_met_gemeente.groupby("statnaam").size().reset_index(name="aantal_laadpalen")
-
-    # Voeg aantal toe aan gemeenten
-    gemeenten_prepared = _gemeenten_gdf.merge(aantal_per_gemeente, on="statnaam", how="left")
-    gemeenten_prepared["aantal_laadpalen"] = gemeenten_prepared["aantal_laadpalen"].fillna(0)
-
-    return gemeenten_prepared
+import json
+import pydeck as pdk
 
 st.set_page_config(
     page_title="Laadpalen Nederland",
@@ -61,55 +12,136 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-laadpalen = load_data(
-    "C:/Users/8Appe/Minor/Data-Science-Groep-10/cases/case-3/laadpalen_nederland_public.csv", 
-    type="csv"
-)
+@st.cache_data(ttl=3600)
+def fetch_data(url, as_dataframe=True):
+    response = requests.get(url)
+    response.raise_for_status()
+    data = response.json()
+    if as_dataframe:
+        return pd.json_normalize(data)
+    else:
+        return data
 
-# Hierdoor werkt het beter met Fast Marker Cluster
-laadpalen.columns = laadpalen.columns.str.replace('.', '_')
+def normalize_name(name):
+    return str(name).strip().lower().replace(" ", "")
 
-# Vul ontbrekende aantal laadpunten in
-laadpalen['aantal_laadpunten'] = laadpalen['NumberOfPoints'].fillna(0).astype(int)
 
-# Haal alle gemeentegrenzen in nederland op
-geo_url = "https://cartomap.github.io/nl/wgs84/gemeente_2023.geojson"
-gemeenten = load_data(geo_url, "geojson")
+# Laadt de nederlandse laadpalen op bij ocm
+ocm_url = "https://api.openchargemap.io/v3/poi/?output=json&countrycode=NL&maxresults=10000&compact=true&verbose=false&key=93b912b5-9d70-4b1f-960b-fb80a4c9c017"
+laadpalen = fetch_data(ocm_url)
+laadpalen.columns = laadpalen.columns.str.replace('.', '_', regex=False)
+laadpalen = laadpalen[laadpalen['AddressInfo_Latitude'].notna() & laadpalen['AddressInfo_Longitude'].notna()]
 
-col1, col2, col3 = st.columns([1, 6, 1])
-with col2:
-    st.title("Publieke laadpalen in Nederland")
-    kaart_keuze = st.radio("Kies welke kaart je wilt zien:", ["Laadpalenkaart", "Laadpalen per gemeente"])
+# Laadt gemeenten GeoJSON
+geojson_url = "https://cartomap.github.io/nl/wgs84/gemeente_2023.geojson"
+geojson_data = fetch_data(geojson_url, as_dataframe=False)
 
-    # Maak lege Folium kaart van Nederland
-    m = folium.Map(location=(52.379189, 5), zoom_start=8)
+
+# Zorgt ervoor dat alle namen consistent zijn
+gemeente_map = {normalize_name(f['properties']['statnaam']): f['properties']['statnaam']
+                for f in geojson_data['features']}
+
+laadpalen['gemeente_norm'] = laadpalen['AddressInfo_Town'].apply(normalize_name)
+laadpalen['gemeente_officieel'] = laadpalen['gemeente_norm'].map(gemeente_map)
+laadpalen = laadpalen[laadpalen['gemeente_officieel'].notna()]
+
+st.title("Laadpalen in Nederland")
+kaart_keuze = st.radio("Kies welke kaart je wilt zien:", ["Laadpalenkaart", "Laadpalen per gemeente"])
+kaart_hoogte = 1000
+col1, col2 = st.columns([4, 6])
+
+with col1:
+    if kaart_keuze == "Laadpalen per gemeente":
+        max_count = laadpalen['gemeente_officieel'].value_counts().max() if not laadpalen.empty else 1
+        stappen = 5
+        stap_waarden = [int(i * max_count / (stappen - 1)) for i in range(stappen)]
+        width_px = 300
+
+        # Maakt de gradatiebalk linksboven
+        st.markdown(
+            f"""
+            <div style='position:absolute; top:30px; left:10px; z-index:9999;
+                        background-color:white; padding:10px; border-radius:5px;
+                        box-shadow: 2px 2px 5px rgba(0,0,0,0.3); width:{width_px}px;'>
+                <b>Aantal laadpalen</b><br>
+                <div style='height:20px; width:100%; 
+                            background: linear-gradient(to right, rgba(0,255,0,0.6), rgba(0,150,255,0.6)); 
+                            position: relative; margin-top:5px;'>
+                    {"".join([f"<div style='position:absolute; left:{i/(stappen-1)*100}%; top:20px; width:1px; height:8px; background:black; transform: translateX(-0.5px);'></div>" for i in range(stappen)])}
+                </div>
+                <div style='display:flex; justify-content: space-between; font-size:12px; margin-top:3px;'>
+                    {"".join([f"<span>{val}</span>" for val in stap_waarden])}
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
 
     if kaart_keuze == "Laadpalenkaart":
-        st.header("2000 willekeurig geselecteerde laadpalen")
-        laadpalen_subset = sample_laadpalen(laadpalen)
-        coords = laadpalen_subset[['AddressInfo_Latitude', 'AddressInfo_Longitude']].dropna().values.tolist()
-        FastMarkerCluster(coords).add_to(m)
+        layer = pdk.Layer(
+            "ScatterplotLayer",
+            data=laadpalen,
+            get_position=["AddressInfo_Longitude", "AddressInfo_Latitude"],
+            get_fill_color=[0, 150, 255, 180],
+            get_radius=500,
+            radius_scale=1,
+            radius_min_pixels=5,
+            radius_max_pixels=50,
+            pickable=True,
+        )
+        view_state = pdk.ViewState(latitude=52.379189, longitude=5, zoom=7, pitch=0)
+        r = pdk.Deck(
+            layers=[layer],
+            initial_view_state=view_state,
+            tooltip={
+                "html": "<b>{AddressInfo_Title}</b><br>{AddressInfo_Town}<br>Aantal laadpunten: {NumberOfPoints}<br>Kosten: {UsageCost}",
+                "style": {"color": "black", "backgroundColor": "white"}
+            },
+            map_style="mapbox://styles/mapbox/light-v10"
+        )
+        st.pydeck_chart(r, use_container_width=True, height=kaart_hoogte)
 
     else:
-        st.header("Aantal laadpalen per gemeente")
-        gemeenten_prepared = bereken_laadpalen_per_gemeente(laadpalen, gemeenten)
-        gemeenten_prepared["aantal_laadpalen_x10"] = gemeenten_prepared["aantal_laadpalen"] / 10
-        max_laadpalen = gemeenten_prepared["aantal_laadpalen_x10"].max()
-        stap = 25
-        max_afgerond = int(np.ceil(max_laadpalen / stap) * stap)
-        bins = list(range(0, max_afgerond + stap, stap))
-
-        folium.Choropleth(
-            geo_data=gemeenten_prepared,
-            data=gemeenten_prepared,
-            columns=["statnaam", "aantal_laadpalen_x10"],
-            key_on="feature.properties.statnaam",
-            fill_color="YlGnBu",
-            fill_opacity=0.8,
-            line_opacity=0.3,
-            legend_name="Aantal laadpalen per gemeente (×10)",
-            bins=bins,
-            reset=True
-        ).add_to(m)
-
-    st_folium(m, width=900, height=1000)
+        # Laadt GeoJSON in GeoPandas
+        gdf = gpd.GeoDataFrame.from_features(geojson_data['features'])
+        gdf['statnaam_norm'] = gdf['statnaam'].str.lower().str.replace(" ", "")
+        
+        # Voegt het aantal laadpalen toe per gemeente
+        counts = laadpalen['gemeente_officieel'].value_counts().to_dict()
+        gdf['aantal_laadpalen'] = gdf['statnaam'].map(counts).fillna(0).astype(int)
+        
+        # Probeert de kleur van de gradatiebalk en choropleth te matchen
+        max_count = gdf['aantal_laadpalen'].max() if not gdf.empty else 1
+        gdf['ratio'] = gdf['aantal_laadpalen'] / max_count
+        gdf['fill_color'] = gdf['ratio'].apply(lambda r: [0, int(255*(1-r)), int(255*r), 150])
+        
+        # Vereenvoudigt de geometrie voor betere prestatie
+        gdf['geometry'] = gdf['geometry'].simplify(tolerance=0.001, preserve_topology=True)
+        
+        gdf = gdf[['geometry', 'statnaam', 'aantal_laadpalen', 'fill_color']]
+        
+        # Converteer naar GeoJSON
+        geojson_data_for_pydeck = json.loads(gdf.to_json())
+        
+        geojson_layer = pdk.Layer(
+            "GeoJsonLayer",
+            data=geojson_data_for_pydeck,
+            get_fill_color="properties.fill_color",
+            get_line_color=[0, 0, 0, 150],
+            pickable=True,
+            auto_highlight=True,
+            stroked=True,
+            filled=True
+        )
+        
+        view_state = pdk.ViewState(latitude=52.379189, longitude=5, zoom=7, pitch=0)
+        r = pdk.Deck(
+            layers=[geojson_layer],
+            initial_view_state=view_state,
+            tooltip={
+                "html": "<b>{statnaam}</b><br>Aantal laadpalen: {aantal_laadpalen}",
+                "style": {"color": "black", "backgroundColor": "white"}
+            },
+            map_style="mapbox://styles/mapbox/light-v10"
+        )
+        st.pydeck_chart(r, use_container_width=True, height=kaart_hoogte)
