@@ -4,8 +4,9 @@ import pandas as pd
 import os
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+CASE_DIR = os.path.dirname(BASE_DIR)
 
-Cars = pd.read_pickle(os.path.join(BASE_DIR, "cars.pkl"))
+Cars = pd.read_pickle(os.path.join(CASE_DIR, "cars.pkl"))
 
 kolommen_drop = [
     'massa_ledig_voertuig',
