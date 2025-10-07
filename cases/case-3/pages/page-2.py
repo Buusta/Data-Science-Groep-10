@@ -56,9 +56,6 @@ Cars = load_and_astype_Cars()
 merken = Cars['merk'].unique()
 
 
-
-
-
 # cars per brand sold fig
 Cars['maand_tenaamstelling'] = Cars['datum_tenaamstelling_dt'].dt.month
 Cars['jaar_tenaamstelling'] = Cars['datum_tenaamstelling_dt'].dt.year
@@ -71,26 +68,15 @@ cum_sorted_brand = month_cum_brand.groupby('merk')['cumulatief'].max().sort_valu
 cum_sorted_brand_list = list(cum_sorted_brand.index)
 
 def update_gekozen_merk_line():
-    if st.session_state[2]:
-        st.session_state[2] = list(cum_sorted_brand[:st.session_state['month_brand_number_input']].index)
+    if st.session_state['gekozen_merk_line']:
+        st.session_state['gekozen_merk_line'] = list(cum_sorted_brand[:st.session_state['top_n_merken_line']].index)
 
+st.number_input('Top N merken', 1, len(cum_sorted_brand), key='top_n_merken_line', value=5, on_change=update_gekozen_merk_line)
+st.multiselect("Kies een merk", merken, default=list(cum_sorted_brand[:st.session_state['top_n_merken_line']].index), key='gekozen_merk_line')
 
-st.number_input('Top N merken', 1, len(cum_sorted_brand), key='month_brand_number_input', value=5, on_change=update_gekozen_merk_line)
-gekozen_merk_line = st.multiselect("Kies een merk", merken, default=list(cum_sorted_brand[:st.session_state['month_brand_number_input']].index), key=2)
-
-
-st.write(st.session_state)
-month_cum_brand_filtered = month_cum_brand[month_cum_brand['merk'].isin(gekozen_merk_line)]
+month_cum_brand_filtered = month_cum_brand[month_cum_brand['merk'].isin(st.session_state['gekozen_merk_line'])]
 cars_per_brand_fig = px.line(month_cum_brand_filtered, x='yearmonth', y='cumulatief', color='merk', category_orders={'merk':cum_sorted_brand_list})
 st.plotly_chart(cars_per_brand_fig)
-
-
-
-
-
-
-
-
 
 
 # cars per month fig
@@ -98,21 +84,24 @@ groupby_month_brand = Cars.groupby(['jaar_tenaamstelling', 'maand_tenaamstelling
 month_brand = groupby_month_brand.reset_index(name='registraties')
 month_brand['yearmonth'] = pd.to_datetime(month_brand['jaar_tenaamstelling'].astype(str) + ' ' + month_brand['maand_tenaamstelling'].astype(str), format='%Y %m')
 
-top_n_merken_bar = st.number_input('Top N merken', 1, len(cum_sorted_brand), key=3, value=5)
-st.write(top_n_merken_bar)
-if top_n_merken_bar:
-    gekozen_merk_bar = st.multiselect("Kies een merk", merken, default=list(cum_sorted_brand[:top_n_merken_bar].index), key=4)
-    st.write(gekozen_merk_bar)
+def update_gekozen_merk_bar():
+    if st.session_state['gekozen_merk_bar']:
+        st.session_state['gekozen_merk_bar'] = list(cum_sorted_brand[:st.session_state['top_n_merken_bar']].index)
 
-month_brand_filtered = month_brand[month_brand['merk'].isin(gekozen_merk_bar)]
+st.number_input('Top N merken', 1, len(cum_sorted_brand), key='top_n_merken_bar', value=5)
+st.multiselect("Kies een merk", merken, default=list(cum_sorted_brand[:st.session_state['top_n_merken_bar']].index), key='gekozen_merk_bar')
+
+month_brand_filtered = month_brand[month_brand['merk'].isin(st.session_state['gekozen_merk_bar'])]
 month_per_brand_fig = px.histogram(month_brand_filtered, x='yearmonth', y='registraties', color='merk', category_orders={'merk':cum_sorted_brand_list})
 st.plotly_chart(month_per_brand_fig)
 
-# avg price per month box?
+
+# avg price per month box
 Cars['yearmonth'] = pd.to_datetime(Cars['jaar_tenaamstelling'].astype(str) + '-' + Cars['maand_tenaamstelling'].astype(str) + '-01')
 
 fig = px.box(Cars, x='yearmonth', y='catalogusprijs', log_y=True, hover_name='handelsbenaming')
 st.plotly_chart(fig)
+
 
 # inrichting fig
 inrichting_labels = {
@@ -143,7 +132,3 @@ if chart_type == "Taartdiagram":
 else:
     inrichting_hist = px.histogram(groupby_inrichting, x='inrichting' ,y='counts', color='inrichting', labels=inrichting_labels)
     st.plotly_chart(inrichting_hist)
-
-# st.write(Cars)
-
-# print(Cars.columns)
