@@ -124,6 +124,6 @@ else:
     inrichting_hist = px.histogram(groupby_inrichting, x='inrichting' ,y='counts', color='inrichting', labels=inrichting_labels)
     st.plotly_chart(inrichting_hist)
 
-st.write(Cars)
+# st.write(Cars)
 
-print(Cars.columns)
+# print(Cars.columns)
