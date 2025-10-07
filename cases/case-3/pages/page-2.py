@@ -53,6 +53,8 @@ def load_and_astype_Cars():
 
 Cars = load_and_astype_Cars()
 
+merken = Cars['merk'].unique()
+
 # cars per brand sold fig
 Cars['maand_tenaamstelling'] = Cars['datum_tenaamstelling_dt'].dt.month
 Cars['jaar_tenaamstelling'] = Cars['datum_tenaamstelling_dt'].dt.year
@@ -66,10 +68,10 @@ cum_sorted_brand = month_cum_brand.groupby('merk')['cumulatief'].max().sort_valu
 cum_sorted_brand_list = list(cum_sorted_brand.index)
 top_n_merken_line = st.number_input('Top N merken', 1, len(cum_sorted_brand), key=1, value=5)
 st.write(top_n_merken_line)
+if top_n_merken_line:
+    gekozen_merk_line = st.multiselect("Kies een merk", merken, default=list(cum_sorted_brand[:top_n_merken_line].index), key=2)
+    st.write(gekozen_merk_line)
 
-merken = Cars['merk'].unique()
-gekozen_merk_line = st.multiselect("Kies een merk", merken, default=list(cum_sorted_brand[:top_n_merken_line].index), key=2)
-st.write(gekozen_merk_line)
 month_cum_brand_filtered = month_cum_brand[month_cum_brand['merk'].isin(gekozen_merk_line)]
 cars_per_brand_fig = px.line(month_cum_brand_filtered, x='yearmonth', y='cumulatief', color='merk', category_orders={'merk':cum_sorted_brand_list})
 st.plotly_chart(cars_per_brand_fig)
@@ -81,8 +83,9 @@ month_brand['yearmonth'] = pd.to_datetime(month_brand['jaar_tenaamstelling'].ast
 
 top_n_merken_bar = st.number_input('Top N merken', 1, len(cum_sorted_brand), key=3, value=5)
 st.write(top_n_merken_bar)
-gekozen_merk_bar = st.multiselect("Kies een merk", merken, default=list(cum_sorted_brand[:top_n_merken_bar].index), key=4)
-st.write(gekozen_merk_bar)
+if top_n_merken_bar:
+    gekozen_merk_bar = st.multiselect("Kies een merk", merken, default=list(cum_sorted_brand[:top_n_merken_bar].index), key=4)
+    st.write(gekozen_merk_bar)
 
 month_brand_filtered = month_brand[month_brand['merk'].isin(gekozen_merk_bar)]
 month_per_brand_fig = px.histogram(month_brand_filtered, x='yearmonth', y='registraties', color='merk', category_orders={'merk':cum_sorted_brand_list})
