@@ -71,13 +71,15 @@ cum_sorted_brand = month_cum_brand.groupby('merk')['cumulatief'].max().sort_valu
 cum_sorted_brand_list = list(cum_sorted_brand.index)
 
 def update_gekozen_merk_line():
-    st.session_state[2] = list(cum_sorted_brand[:st.session_state['month_brand_number_input']].index)
+    if st.session_state[2]:
+        st.session_state[2] = list(cum_sorted_brand[:st.session_state['month_brand_number_input']].index)
 
 
-st.number_input('Top N merken', 1, len(cum_sorted_brand), key='month_brand_number_input', value=5, on_change=update_gekozen_merk_line())
+st.number_input('Top N merken', 1, len(cum_sorted_brand), key='month_brand_number_input', value=5, on_change=update_gekozen_merk_line)
 gekozen_merk_line = st.multiselect("Kies een merk", merken, default=list(cum_sorted_brand[:st.session_state['month_brand_number_input']].index), key=2)
-st.write(st.session_state)
 
+
+st.write(st.session_state)
 month_cum_brand_filtered = month_cum_brand[month_cum_brand['merk'].isin(gekozen_merk_line)]
 cars_per_brand_fig = px.line(month_cum_brand_filtered, x='yearmonth', y='cumulatief', color='merk', category_orders={'merk':cum_sorted_brand_list})
 st.plotly_chart(cars_per_brand_fig)
