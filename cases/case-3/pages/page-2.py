@@ -68,8 +68,12 @@ cum_sorted_brand = month_cum_brand.groupby('merk')['cumulatief'].max().sort_valu
 cum_sorted_brand_list = list(cum_sorted_brand.index)
 top_n_merken_line = st.number_input('Top N merken', 1, len(cum_sorted_brand), key=1, value=5)
 st.write(top_n_merken_line)
+
+selected_brands = list(cum_sorted_brand[:top_n_merken_line].index)
+
 if top_n_merken_line:
-    gekozen_merk_line = st.multiselect("Kies een merk", merken, default=list(cum_sorted_brand[:top_n_merken_line].index), key=2)
+    gekozen_merk_line = st.multiselect("Kies een merk", merken, default=selected_brands, key=2)
+    st.write(selected_brands)
     st.write(gekozen_merk_line)
 
 month_cum_brand_filtered = month_cum_brand[month_cum_brand['merk'].isin(gekozen_merk_line)]
