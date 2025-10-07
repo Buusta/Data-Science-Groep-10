@@ -88,7 +88,7 @@ def update_gekozen_merk_bar():
     if st.session_state['gekozen_merk_bar']:
         st.session_state['gekozen_merk_bar'] = list(cum_sorted_brand[:st.session_state['top_n_merken_bar']].index)
 
-st.number_input('Top N merken', 1, len(cum_sorted_brand), key='top_n_merken_bar', value=5)
+st.number_input('Top N merken', 1, len(cum_sorted_brand), key='top_n_merken_bar', value=5, on_change=update_gekozen_merk_bar)
 st.multiselect("Kies een merk", merken, default=list(cum_sorted_brand[:st.session_state['top_n_merken_bar']].index), key='gekozen_merk_bar')
 
 month_brand_filtered = month_brand[month_brand['merk'].isin(st.session_state['gekozen_merk_bar'])]
