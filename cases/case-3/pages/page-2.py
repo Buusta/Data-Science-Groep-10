@@ -66,15 +66,10 @@ month_cum_brand['yearmonth'] = pd.to_datetime(month_cum_brand['jaar_tenaamstelli
 
 cum_sorted_brand = month_cum_brand.groupby('merk')['cumulatief'].max().sort_values(ascending=False)
 cum_sorted_brand_list = list(cum_sorted_brand.index)
-top_n_merken_line = st.number_input('Top N merken', 1, len(cum_sorted_brand), key=1, value=5)
-st.write(top_n_merken_line)
+st.number_input('Top N merken', 1, len(cum_sorted_brand), key='month_brand_number_input', value=5)
 
-selected_brands = list(cum_sorted_brand[:top_n_merken_line].index)
-
-if top_n_merken_line:
-    gekozen_merk_line = st.multiselect("Kies een merk", merken, default=selected_brands, key=2)
-    st.write(selected_brands)
-    st.write(gekozen_merk_line)
+gekozen_merk_line = st.multiselect("Kies een merk", merken, default=list(cum_sorted_brand[:st.session_state['month_brand_number_input']].index), key=2)
+st.write(gekozen_merk_line)
 
 month_cum_brand_filtered = month_cum_brand[month_cum_brand['merk'].isin(gekozen_merk_line)]
 cars_per_brand_fig = px.line(month_cum_brand_filtered, x='yearmonth', y='cumulatief', color='merk', category_orders={'merk':cum_sorted_brand_list})
