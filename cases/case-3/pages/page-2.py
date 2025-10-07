@@ -6,47 +6,52 @@ import os
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 CASE_DIR = os.path.dirname(BASE_DIR)
 
-Cars = pd.read_pickle(os.path.join(CASE_DIR, "cars.pkl"))
+@st.cache_data
+def load_and_astype_Cars():
+    Cars = pd.read_pickle(os.path.join(CASE_DIR, "cars.pkl"))
 
-kolommen_drop = [
-    'massa_ledig_voertuig',
-    'massa_rijklaar',
-    'catalogusprijs',
-    'aantal_deuren',
-    'aantal_wielen',
-    'lengte',
-    'breedte',
-    'hoogte_voertuig',
-    'volgnummer_wijziging_eu_typegoedkeuring',
-    'wielbasis',
-    'jaar_laatste_registratie_tellerstand',
-    'vermogen_massarijklaar',
-    'datum_tenaamstelling_dt'
-]
+    kolommen_drop = [
+        'massa_ledig_voertuig',
+        'massa_rijklaar',
+        'catalogusprijs',
+        'aantal_deuren',
+        'aantal_wielen',
+        'lengte',
+        'breedte',
+        'hoogte_voertuig',
+        'volgnummer_wijziging_eu_typegoedkeuring',
+        'wielbasis',
+        'jaar_laatste_registratie_tellerstand',
+        'vermogen_massarijklaar',
+        'datum_tenaamstelling_dt'
+    ]
 
-Cars = Cars.dropna(subset=kolommen_drop)
+    Cars = Cars.dropna(subset=kolommen_drop)
 
-Cars['vervaldatum_apk_dt'] = pd.to_datetime(Cars['vervaldatum_apk_dt'], errors='coerce')
-Cars['datum_tenaamstelling_dt'] = pd.to_datetime(Cars['datum_tenaamstelling_dt'], errors='coerce')
+    Cars['vervaldatum_apk_dt'] = pd.to_datetime(Cars['vervaldatum_apk_dt'], errors='coerce')
+    Cars['datum_tenaamstelling_dt'] = pd.to_datetime(Cars['datum_tenaamstelling_dt'], errors='coerce')
 
-Cars['massa_ledig_voertuig'] = Cars['massa_ledig_voertuig'].astype(int)
-Cars['massa_rijklaar'] = Cars['massa_rijklaar'].astype(int)
-Cars['catalogusprijs'] = Cars['catalogusprijs'].astype(int)
-Cars['aantal_deuren'] = Cars['aantal_deuren'].astype(int)
-Cars['aantal_wielen'] = Cars['aantal_wielen'].astype(int)
-Cars['lengte'] = Cars['lengte'].astype(int)
-Cars['breedte'] = Cars['breedte'].astype(int)
-Cars['hoogte_voertuig'] = Cars['hoogte_voertuig'].astype(int)
-Cars['volgnummer_wijziging_eu_typegoedkeuring'] = Cars['volgnummer_wijziging_eu_typegoedkeuring'].astype(int)
-Cars['wielbasis'] = Cars['wielbasis'].astype(int)
-Cars['jaar_laatste_registratie_tellerstand'] = Cars['jaar_laatste_registratie_tellerstand'].astype(int)
+    Cars['massa_ledig_voertuig'] = Cars['massa_ledig_voertuig'].astype(int)
+    Cars['massa_rijklaar'] = Cars['massa_rijklaar'].astype(int)
+    Cars['catalogusprijs'] = Cars['catalogusprijs'].astype(int)
+    Cars['aantal_deuren'] = Cars['aantal_deuren'].astype(int)
+    Cars['aantal_wielen'] = Cars['aantal_wielen'].astype(int)
+    Cars['lengte'] = Cars['lengte'].astype(int)
+    Cars['breedte'] = Cars['breedte'].astype(int)
+    Cars['hoogte_voertuig'] = Cars['hoogte_voertuig'].astype(int)
+    Cars['volgnummer_wijziging_eu_typegoedkeuring'] = Cars['volgnummer_wijziging_eu_typegoedkeuring'].astype(int)
+    Cars['wielbasis'] = Cars['wielbasis'].astype(int)
+    Cars['jaar_laatste_registratie_tellerstand'] = Cars['jaar_laatste_registratie_tellerstand'].astype(int)
 
-Cars['vermogen_massarijklaar'] = Cars['vermogen_massarijklaar'].astype(float)
+    Cars['vermogen_massarijklaar'] = Cars['vermogen_massarijklaar'].astype(float)
 
-Cars['export_indicator'] = Cars['export_indicator'].astype(bool)
-Cars['openstaande_terugroepactie_indicator'] = Cars['openstaande_terugroepactie_indicator'].astype(bool)
-Cars['taxi_indicator'] = Cars['taxi_indicator'].astype(bool)
+    Cars['export_indicator'] = Cars['export_indicator'].astype(bool)
+    Cars['openstaande_terugroepactie_indicator'] = Cars['openstaande_terugroepactie_indicator'].astype(bool)
+    Cars['taxi_indicator'] = Cars['taxi_indicator'].astype(bool)
 
+    return Cars
+
+Cars = load_and_astype_Cars()
 
 # cars per brand sold fig
 Cars['maand_tenaamstelling'] = Cars['datum_tenaamstelling_dt'].dt.month
