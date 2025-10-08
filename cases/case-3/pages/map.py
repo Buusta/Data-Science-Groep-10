@@ -142,7 +142,7 @@ if kaart_keuze == "Laadpalen per gemeente":
         tooltip={
             "html": "<b>{statnaam}</b><br>Aantal laadpalen: {aantal_laadpalen}",
             "style": {"color": "black", "backgroundColor": "white"}
-        }
+        },
         map_style="mapbox://styles/mapbox/light-v10"
     )
     st.pydeck_chart(r, use_container_width=True, height=kaart_hoogte)
