@@ -128,7 +128,7 @@ chart_type = st.radio(
 
 if chart_type == "Taartdiagram":
     inrichting_pie = px.pie(groupby_inrichting, values='counts', names='inrichting', labels=inrichting_labels)
-    st.plotly_chart(inrichting_pie)
+    st.plotly_chart(inrichting_pie, key='test')
 else:
     inrichting_hist = px.histogram(groupby_inrichting, x='inrichting' ,y='counts', color='inrichting', labels=inrichting_labels)
-    st.plotly_chart(inrichting_hist)
+    st.plotly_chart(inrichting_hist, key='test2')
