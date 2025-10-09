@@ -87,7 +87,7 @@ st.multiselect("Kies een merk", merken, default=list(cum_sorted_brand[:st.sessio
 month_cum_brand_filtered = month_cum_brand[month_cum_brand['merk'].isin(st.session_state['gekozen_merk_line'])]
 cars_per_brand_fig = px.line(month_cum_brand_filtered, x='yearmonth', y='cumulatief', color='merk',
                              category_orders={'merk':cum_sorted_brand_list},
-                             labels={'cumulatief':'Totaal aantal registraties', 'yearmonth':'Maand'})
+                             labels={'cumulatief':'Totaal aantal registraties', 'yearmonth':'Maand', 'merk':'Merk'})
 st.plotly_chart(cars_per_brand_fig)
 
 
@@ -106,7 +106,7 @@ st.multiselect("Kies een merk", merken, default=list(cum_sorted_brand[:st.sessio
 
 month_brand_filtered = month_brand[month_brand['merk'].isin(st.session_state['gekozen_merk_bar'])]
 month_per_brand_fig = px.histogram(month_brand_filtered, x='yearmonth', y='registraties', color='merk', category_orders={'merk':cum_sorted_brand_list},
-                                   labels={'registraties':'Aantal registraties', 'yearmonth':'Maand'})
+                                   labels={'registraties':'Aantal registraties', 'yearmonth':'Maand', 'merk':'Merk'})
 month_per_brand_fig.update_yaxes(title_text="Aantal registraties")
 month_per_brand_fig.update_layout(bargap=0.05)
 month_per_brand_fig.update_traces(
