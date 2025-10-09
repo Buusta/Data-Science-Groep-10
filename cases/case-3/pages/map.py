@@ -1,12 +1,11 @@
 import streamlit as st
 import pandas as pd
 import geopandas as gpd
-import json
-import pydeck as pdk
-import requests
-import os
+import folium
+from streamlit_folium import st_folium
 import matplotlib.pyplot as plt
 import numpy as np
+import requests
 
 # -------------------------------
 # Pagina-instellingen
@@ -20,16 +19,6 @@ st.set_page_config(
 # -------------------------------
 # Functies
 # -------------------------------
-@st.cache_data(ttl=3600)
-def fetch_data(url, as_dataframe=True):
-    response = requests.get(url)
-    response.raise_for_status()
-    data = response.json()
-    if as_dataframe:
-        return pd.json_normalize(data)
-    else:
-        return data
-
 def normalize_name(name):
     return str(name).strip().lower().replace(" ", "").replace("-", "").replace("'", "")
 
@@ -42,181 +31,111 @@ gdf = gpd.read_file(geojson_url)
 # -------------------------------
 # Laad gemeente-data
 # -------------------------------
-
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-CASE_DIR = os.path.dirname(BASE_DIR)
-
-gemeente_data = pd.read_csv(os.path.join(CASE_DIR, "laadpunten_per_gemeente.csv"))
+gemeente_data = pd.read_csv("laadpunten_per_gemeente.csv")
 gemeente_data.columns = gemeente_data.columns.str.strip()
 
 # -------------------------------
-# Definieer laatste maand voor analyse
+# Laatste maand
 # -------------------------------
-laatste_maand = "Oktober 2025"
+laatste_maand = "December 2024"
 
 # -------------------------------
-# Selecteer alleen kolommen van de laatste maand voor reguliere publieke laadpalen
+# Bereken aantal reguliere publieke laadpalen
 # -------------------------------
-publieke_kolommen = [
-    col for col in gemeente_data.columns
-    if laatste_maand in col and "Regulier Publiek" in col
-]
-
-# Tel deze kolommen bij elkaar op
+publieke_kolommen = [col for col in gemeente_data.columns if laatste_maand in col and "Regulier Publiek" in col]
 gemeente_data['Aantal_Laadpalen_Publiek'] = gemeente_data[publieke_kolommen].sum(axis=1)
 
-# -------------------------------
-# Normaliseer gemeentenaam en voeg aantal laadpalen toe aan GeoDataFrame
-# -------------------------------
+# Normaliseer namen en voeg toe aan GeoDataFrame
 gemeente_map = {normalize_name(name): val for name, val in zip(gemeente_data['Gemeenten'], gemeente_data['Aantal_Laadpalen_Publiek'])}
 gdf['statnaam_norm'] = gdf['statnaam'].apply(normalize_name)
 gdf['aantal_laadpalen'] = gdf['statnaam_norm'].map(lambda x: gemeente_map.get(x, 0)).astype(int)
 
 # -------------------------------
-# Bereken kleuren voor gemeenten
+# Sidebar keuze
 # -------------------------------
-max_count = gdf['aantal_laadpalen'].max() if not gdf.empty else 1
-
-def compute_color(count, max_count):
-    if max_count == 0:
-        return [200, 200, 200, 180]
-    ratio = count / max_count
-    r = 0
-    g = int(255 * (1 - ratio))
-    b = int(255 * ratio)
-    return [r, g, b, 180]
-
-gdf['fill_color'] = gdf['aantal_laadpalen'].apply(lambda x: compute_color(x, max_count))
-gdf['geometry'] = gdf['geometry'].simplify(tolerance=0.001, preserve_topology=True)
-geojson_data_for_pydeck = json.loads(gdf.to_json())
+kaart_keuze = st.sidebar.radio("Kies welke kaart je wilt zien:", ["Choropleth", "Steekproef"])
 
 # -------------------------------
-# Streamlit UI
-# -------------------------------
-kaart_keuze = st.sidebar.radio("Kies welke kaart je wilt zien:", ["Steekproef", "Choropleth"])
-kaart_hoogte = 1000
-
-# -------------------------------
-# Laadpalen per gemeente (GeoJSON / choropleth)
+# Choropleth-kaart
 # -------------------------------
 if kaart_keuze == "Choropleth":
     st.title("Laadpalen per gemeente")
     
-    stappen = 5
-    stap_waarden = [int(i * max_count / (stappen - 1)) for i in range(stappen)]
-    width_px = 300
-
-    st.markdown(
-        f"""
-        <div style='position:absolute; top:30px; left:10px; z-index:9999;
-                    background-color:white; padding:10px; border-radius:5px;
-                    box-shadow: 2px 2px 5px rgba(0,0,0,0.3); width:{width_px}px;'>
-            <b>Aantal reguliere publieke laadpalen ({laatste_maand})</b><br>
-            <div style='height:20px; width:100%; 
-                        background: linear-gradient(to right, rgba(0,255,0,0.6), rgba(0,0,255,0.6)); 
-                        position: relative; margin-top:5px;'>
-                {"".join([f"<div style='position:absolute; left:{i/(stappen-1)*100}%; top:20px; width:1px; height:8px; background:black; transform: translateX(-0.5px);'></div>" for i in range(stappen)])}
-            </div>
-            <div style='display:flex; justify-content: space-between; font-size:12px; margin-top:3px;'>
-                {"".join([f"<span>{val}</span>" for val in stap_waarden])}
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-
-    geojson_layer = pdk.Layer(
-        "GeoJsonLayer",
-        data=geojson_data_for_pydeck,
-        get_fill_color="properties.fill_color",
-        get_line_color=[0, 0, 0, 150],
-        pickable=True,
-        auto_highlight=True,
-        stroked=True,
-        filled=True
-    )
-
-    view_state = pdk.ViewState(latitude=52.379189, longitude=5, zoom=7, pitch=0)
-    r = pdk.Deck(
-        layers=[geojson_layer],
-        initial_view_state=view_state,
-        tooltip={
-            "html": "<b>{statnaam}</b><br>Aantal reguliere publieke laadpalen: {aantal_laadpalen}",
-            "style": {"color": "black", "backgroundColor": "white"}
-        },
-        map_style="mapbox://styles/mapbox/light-v10"
-    )
-    st.pydeck_chart(r, use_container_width=True, height=kaart_hoogte)
+    # Begin kaart
+    m = folium.Map(location=[52.379189, 5], zoom_start=7)
+    
+    # Voeg choropleth toe
+    folium.Choropleth(
+        geo_data=gdf,
+        data=gdf,
+        columns=['statnaam', 'aantal_laadpalen'],
+        key_on='feature.properties.statnaam',
+        fill_color='YlGnBu',
+        fill_opacity=0.7,
+        line_opacity=0.2,
+        legend_name=f"Aantal reguliere publieke laadpalen"
+    ).add_to(m)
+    
+    # Tooltip
+    for _, row in gdf.iterrows():
+        folium.GeoJson(
+            row['geometry'],
+            style_function=lambda x: {'fillColor': 'transparent', 'color': 'black', 'weight':1},
+            tooltip=f"{row['statnaam']}: {row['aantal_laadpalen']} laadpalen"
+        ).add_to(m)
+    
+    st_folium(m, width=1000, height=700)
 
 # -------------------------------
-# Individuele laadpalen (Scatterplot)
+# Steekproef Scatterplot
 # -------------------------------
 else:
-    st.title("Steekproef van 10.000 willekeurig gekozen laadpalen in Nederland")
+    st.title("Steekproef van 1.000 willekeurig gekozen laadpalen in Nederland")
     
-    ocm_url = "https://api.openchargemap.io/v3/poi/?output=json&countrycode=NL&maxresults=10000&compact=true&verbose=false&key=93b912b5-9d70-4b1f-960b-fb80a4c9c017"
-    laadpalen = fetch_data(ocm_url)
-    laadpalen.columns = laadpalen.columns.str.replace('.', '_', regex=False)
+    # Haal data op via requests
+    ocm_url = "https://api.openchargemap.io/v3/poi/?output=json&countrycode=NL&maxresults=1000&compact=true&verbose=false&key=93b912b5-9d70-4b1f-960b-fb80a4c9c017"
+    response = requests.get(ocm_url).json()
+    
+    # Flatten JSON met underscores
+    laadpalen = pd.json_normalize(response, sep="_")
+    
+    # Filter op geldige coördinaten
     laadpalen = laadpalen[laadpalen['AddressInfo_Latitude'].notna() & laadpalen['AddressInfo_Longitude'].notna()]
-
-    layer = pdk.Layer(
-        "ScatterplotLayer",
-        data=laadpalen,
-        get_position=["AddressInfo_Longitude", "AddressInfo_Latitude"],
-        get_fill_color=[0, 150, 255, 180],
-        get_radius=500,
-        radius_scale=1,
-        radius_min_pixels=5,
-        radius_max_pixels=50,
-        pickable=True,
-    )
-    view_state = pdk.ViewState(latitude=52.379189, longitude=5, zoom=7, pitch=0)
-    r = pdk.Deck(
-        layers=[layer],
-        initial_view_state=view_state,
-        tooltip={
-            "html": "<b>{AddressInfo_Title}</b><br>{AddressInfo_Town}<br>Aantal laadpunten: {NumberOfPoints}<br>Kosten: {UsageCost}",
-            "style": {"color": "black", "backgroundColor": "white"}
-        },
-        map_style="mapbox://styles/mapbox/light-v10"
-    )
-    st.pydeck_chart(r, use_container_width=True, height=kaart_hoogte)
+    
+    # Begin kaart
+    m = folium.Map(location=[52.379189, 5], zoom_start=7)
+    
+    # Voeg CircleMarkers toe
+    for _, row in laadpalen.iterrows():
+        folium.CircleMarker(
+            location=[row['AddressInfo_Latitude'], row['AddressInfo_Longitude']],
+            radius=3,
+            color='blue',
+            fill=True,
+            fill_opacity=0.6,
+            popup=f"{row.get('AddressInfo_Title','N/A')}<br>{row.get('AddressInfo_Town','N/A')}<br>Aantal laadpunten: {row.get('NumberOfPoints','N/A')}<br>Kosten: {row.get('UsageCost','N/A')}"
+        ).add_to(m)
+    
+    st_folium(m, width=1000, height=700)
 
 # -------------------------------
 # Top 20 grootste gemeenten bar chart
 # -------------------------------
-df = pd.read_csv(os.path.join(CASE_DIR, "top20_gemeenten_laadpalen_2025.csv"))
-
-# Sorteer op ratio (Laadpalen_per_1000_inwoners)
+df = pd.read_csv("top20_gemeenten_laadpalen_2025.csv")
 df = df.sort_values("Laadpalen_per_1000_inwoners", ascending=False)
+laatste_maand_chart = "oktober 2025"
 
-# Laatste maand (voor titel)
-laatste_maand = "oktober 2025"
-
-# Plot maken
 fig, ax = plt.subplots(figsize=(14, 6))
 bars = ax.bar(df["Gemeente"], df["Laadpalen_per_1000_inwoners"])
-
-# Labeling
-ax.set_ylabel("Laadpalen", fontsize=12)
+ax.set_ylabel("Laadpalen per 1000 inwoners", fontsize=12)
 ax.set_xlabel("Gemeente", fontsize=12)
-ax.set_title(f"Aantal reguliere publieke laadpalen per 1000 inwoners in de 20 grootste gemeenten ({laatste_maand}, Laadinfrastructuur)", fontsize=14)
-
-# X-as labels
+ax.set_title(f"Aantal reguliere publieke laadpalen per 1000 inwoners in de 20 grootste gemeenten ({laatste_maand_chart}, Laadinfrastructuur)", fontsize=14)
 ax.set_xticks(range(len(df)))
 ax.set_xticklabels(df["Gemeente"], rotation=45, ha="right", fontsize=10)
-
-# Y-as ticks en grid
 max_ratio = int(np.ceil(df["Laadpalen_per_1000_inwoners"].max()))
 ax.set_yticks(np.arange(0, max_ratio + 1, 1))
 ax.grid(axis='y', linestyle='--', alpha=0.7)
-
-# Toon waarden boven de balken
 for bar in bars:
     height = bar.get_height()
-    ax.text(bar.get_x() + bar.get_width()/2, height + 0.1, f"{height:.2f}", 
-            ha='center', va='bottom', fontsize=9)
-
-# Plot tonen in Streamlit
+    ax.text(bar.get_x() + bar.get_width()/2, height + 0.1, f"{height:.2f}", ha='center', va='bottom', fontsize=9)
 st.pyplot(fig)
-
