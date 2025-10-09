@@ -49,6 +49,15 @@ def load_and_astype_Cars():
     Cars['openstaande_terugroepactie_indicator'] = Cars['openstaande_terugroepactie_indicator'].astype(bool)
     Cars['taxi_indicator'] = Cars['taxi_indicator'].astype(bool)
 
+    merk_dict = {
+        'VW':'VOLKSWAGEN',
+        'BMW I':'BMW',
+        'POSSL':'POESSL',
+        'SSANGYONG':'KG MOBILITY'
+    }
+    
+    Cars['merk'] = Cars['merk'].replace(merk_dict)
+
     return Cars
 
 Cars = load_and_astype_Cars()
@@ -112,7 +121,7 @@ inrichting_labels = {
     'Overige': 'Overige'
 }
 
-groupby_inrichting = Cars['inrichting'].value_counts().reset_index(name='counts')
+#groupby_inrichting = Cars['inrichting'].value_counts().reset_index(name='counts')
 overige_labels = ['cabriolet', 'coupe', 'kampeerwagen', 'lijkwagen']
 
 Cars_inrichting = Cars['inrichting'].replace(overige_labels, 'Overige')
@@ -120,15 +129,37 @@ groupby_inrichting = Cars_inrichting.value_counts().reset_index(name='counts')
 
 groupby_inrichting['inrichting'] = groupby_inrichting['inrichting'].replace(inrichting_labels)
 
-chart_type = st.radio(
+chart_type_inrichting = st.radio(
     "Kies grafiektype:",
     ["Taartdiagram", "Staafdiagram"],
-    horizontal=True
+    horizontal=True, key='inrichting_hist_pie'
 )
 
-if chart_type == "Taartdiagram":
+if chart_type_inrichting == "Taartdiagram":
     inrichting_pie = px.pie(groupby_inrichting, values='counts', names='inrichting', labels=inrichting_labels)
     st.plotly_chart(inrichting_pie, key='test')
 else:
     inrichting_hist = px.histogram(groupby_inrichting, x='inrichting' ,y='counts', color='inrichting', labels=inrichting_labels)
     st.plotly_chart(inrichting_hist, key='test2')
+
+# top 5 autos die worden geimporteerd
+import_filter = Cars['datum_tenaamstelling'] == Cars['datum_eerste_tenaamstelling_in_nederland']
+merk_import_normalized = Cars[~import_filter]['merk'].value_counts(normalize=True).sort_values(ascending=False)
+merk_import_overige = merk_import_normalized[merk_import_normalized < 0.015]
+merk_import = Cars[~import_filter]['merk'].replace(merk_import_overige.index, 'Overige').value_counts().sort_values(ascending=False).reset_index(name='counts')
+
+st.write(merk_import)
+
+
+chart_type_import = st.radio(
+    "Kies grafiektype:",
+    ["Taartdiagram", "Staafdiagram"],
+    horizontal=True, key='merk_import_hist_pie'
+)
+
+if chart_type_import == 'Taartdiagram':
+    merk_import_pie = px.pie(merk_import, values='counts', names='merk')
+    st.plotly_chart(merk_import_pie)
+else:
+    merk_import_hist = px.histogram(merk_import, x='merk', y='counts', color='merk')
+    st.plotly_chart(merk_import_hist)
