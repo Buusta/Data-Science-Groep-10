@@ -9,10 +9,11 @@ sns.set_style("whitegrid")
 
 # --- Sidebar navigatie ---
 st.sidebar.header("Navigatie")
-pagina = st.sidebar.radio("Kies een pagina:", ["Pagina 1", "Pagina 2", "Pagina 3"])
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 CASE_DIR = os.path.dirname(BASE_DIR)
+
+pagina = "Pagina 1"
 
 if pagina == "Pagina 1":
     st.title("Laadpaal Data Dashboard")
@@ -447,14 +448,6 @@ if pagina == "Pagina 1":
         )
 
         st.plotly_chart(fig_scatter, use_container_width=True)
-
-elif pagina == "Pagina 2":
-    st.title("Auto-specificaties")
-    st.write("Hier komen gegevens over voertuigtrend, groei EV’s en prijsontwikkeling.")
-
-elif pagina == "Pagina 3":
-    st.title("Overzichtskaart")
-    st.write("Hier komt de interactieve kaart van laadpalen.")
 
 if jaar == '2018':
     pass
