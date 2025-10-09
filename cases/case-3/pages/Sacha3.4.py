@@ -13,9 +13,7 @@ st.sidebar.header("Navigatie")
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 CASE_DIR = os.path.dirname(BASE_DIR)
 
-pagina = "Pagina 1"
-
-if pagina == "Pagina 1":
+if True:
     st.title("Laadpaal Data Dashboard")
 
     # --- Jaar selecteren ---
