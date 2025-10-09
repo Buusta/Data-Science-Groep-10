@@ -48,7 +48,7 @@ gemeente_data.columns = gemeente_data.columns.str.strip()
 # -------------------------------
 # Definieer laatste maand voor analyse
 # -------------------------------
-laatste_maand = "December 2024"
+laatste_maand = "Oktober 2025"
 
 # -------------------------------
 # Selecteer alleen kolommen van de laatste maand voor reguliere publieke laadpalen
@@ -215,3 +215,4 @@ for bar in bars:
 
 # Plot tonen in Streamlit
 st.pyplot(fig)
+
