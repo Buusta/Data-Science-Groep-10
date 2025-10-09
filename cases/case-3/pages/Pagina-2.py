@@ -66,6 +66,7 @@ merken = Cars['merk'].unique()
 
 
 # cars per brand sold fig
+st.title('Auto registraties per merk')
 Cars['maand_tenaamstelling'] = Cars['datum_tenaamstelling_dt'].dt.month
 Cars['jaar_tenaamstelling'] = Cars['datum_tenaamstelling_dt'].dt.year
 groupby_brand = Cars.groupby(['jaar_tenaamstelling', 'maand_tenaamstelling', 'merk']).size()
@@ -84,11 +85,14 @@ st.number_input('Top N merken', 1, len(cum_sorted_brand), key='top_n_merken_line
 st.multiselect("Kies een merk", merken, default=list(cum_sorted_brand[:st.session_state['top_n_merken_line']].index), key='gekozen_merk_line')
 
 month_cum_brand_filtered = month_cum_brand[month_cum_brand['merk'].isin(st.session_state['gekozen_merk_line'])]
-cars_per_brand_fig = px.line(month_cum_brand_filtered, x='yearmonth', y='cumulatief', color='merk', category_orders={'merk':cum_sorted_brand_list})
+cars_per_brand_fig = px.line(month_cum_brand_filtered, x='yearmonth', y='cumulatief', color='merk',
+                             category_orders={'merk':cum_sorted_brand_list},
+                             labels={'cumulatief':'Totaal aantal registraties', 'yearmonth':'Maand'})
 st.plotly_chart(cars_per_brand_fig)
 
 
 # cars per month fig
+st.title('Auto registraties per maand')
 groupby_month_brand = Cars.groupby(['jaar_tenaamstelling', 'maand_tenaamstelling', 'merk']).size()
 month_brand = groupby_month_brand.reset_index(name='registraties')
 month_brand['yearmonth'] = pd.to_datetime(month_brand['jaar_tenaamstelling'].astype(str) + ' ' + month_brand['maand_tenaamstelling'].astype(str), format='%Y %m')
@@ -101,15 +105,50 @@ st.number_input('Top N merken', 1, len(cum_sorted_brand), key='top_n_merken_bar'
 st.multiselect("Kies een merk", merken, default=list(cum_sorted_brand[:st.session_state['top_n_merken_bar']].index), key='gekozen_merk_bar')
 
 month_brand_filtered = month_brand[month_brand['merk'].isin(st.session_state['gekozen_merk_bar'])]
-month_per_brand_fig = px.histogram(month_brand_filtered, x='yearmonth', y='registraties', color='merk', category_orders={'merk':cum_sorted_brand_list})
+month_per_brand_fig = px.histogram(month_brand_filtered, x='yearmonth', y='registraties', color='merk', category_orders={'merk':cum_sorted_brand_list},
+                                   labels={'registraties':'Aantal registraties', 'yearmonth':'Maand'})
+month_per_brand_fig.update_yaxes(title_text="Aantal registraties")
+month_per_brand_fig.update_layout(bargap=0.05)
+month_per_brand_fig.update_traces(
+    xbins=dict(
+        start=month_brand_filtered['yearmonth'].min(),
+        end=month_brand_filtered['yearmonth'].max(),
+        size="M1"  # 1 month bin size
+    )
+)
 st.plotly_chart(month_per_brand_fig)
 
 
 # avg price per month box
+st.title('Auto catalogusprijs per maand')
 Cars['yearmonth'] = pd.to_datetime(Cars['jaar_tenaamstelling'].astype(str) + '-' + Cars['maand_tenaamstelling'].astype(str) + '-01')
 
-fig = px.box(Cars, x='yearmonth', y='catalogusprijs', log_y=True, hover_name='handelsbenaming')
+fig = px.box(Cars, x='yearmonth', y='catalogusprijs', log_y=True, hover_name='handelsbenaming',
+             labels={'catalogusprijs':'Catalogusprijs (log)', 'yearmonth': 'Maand'})
 st.plotly_chart(fig)
+
+# top 5 autos die worden geimporteerd
+import_filter = Cars['datum_tenaamstelling'] == Cars['datum_eerste_tenaamstelling_in_nederland']
+merk_import_normalized = Cars[~import_filter]['merk'].value_counts(normalize=True).sort_values(ascending=False)
+merk_import_overige = merk_import_normalized[merk_import_normalized < 0.015]
+merk_import = Cars[~import_filter]['merk'].replace(merk_import_overige.index, 'Overige').value_counts().sort_values(ascending=False).reset_index(name='counts')
+
+
+st.title('Geimporteerde autos per merk')
+
+chart_type_import = st.radio(
+    "Kies grafiektype:",
+    ["Taartdiagram", "Staafdiagram"],
+    horizontal=True, key='merk_import_hist_pie'
+)
+
+if chart_type_import == 'Taartdiagram':
+    merk_import_pie = px.pie(merk_import, values='counts', names='merk')
+    st.plotly_chart(merk_import_pie)
+else:
+    merk_import_hist = px.histogram(merk_import, x='merk', y='counts', color='merk', labels={'merk':'Merk'})
+    merk_import_hist.update_yaxes(title_text="Aantal registraties")
+    st.plotly_chart(merk_import_hist)
 
 
 # inrichting fig
@@ -118,16 +157,18 @@ inrichting_labels = {
     'MPV': 'MPV',
     'hatchback': 'Hatchback',
     'sedan': 'Sedan',
-    'Overige': 'Overige'
+    'Overige': 'Overige',
+    'inrichting':'Carrosserie vorm'
 }
 
-#groupby_inrichting = Cars['inrichting'].value_counts().reset_index(name='counts')
 overige_labels = ['cabriolet', 'coupe', 'kampeerwagen', 'lijkwagen']
 
 Cars_inrichting = Cars['inrichting'].replace(overige_labels, 'Overige')
 groupby_inrichting = Cars_inrichting.value_counts().reset_index(name='counts')
 
 groupby_inrichting['inrichting'] = groupby_inrichting['inrichting'].replace(inrichting_labels)
+
+st.title('Carrosserie vormen')
 
 chart_type_inrichting = st.radio(
     "Kies grafiektype:",
@@ -140,26 +181,6 @@ if chart_type_inrichting == "Taartdiagram":
     st.plotly_chart(inrichting_pie, key='test')
 else:
     inrichting_hist = px.histogram(groupby_inrichting, x='inrichting' ,y='counts', color='inrichting', labels=inrichting_labels)
+    inrichting_hist.update_yaxes(title_text="Aantal registraties")
     st.plotly_chart(inrichting_hist, key='test2')
 
-# top 5 autos die worden geimporteerd
-import_filter = Cars['datum_tenaamstelling'] == Cars['datum_eerste_tenaamstelling_in_nederland']
-merk_import_normalized = Cars[~import_filter]['merk'].value_counts(normalize=True).sort_values(ascending=False)
-merk_import_overige = merk_import_normalized[merk_import_normalized < 0.015]
-merk_import = Cars[~import_filter]['merk'].replace(merk_import_overige.index, 'Overige').value_counts().sort_values(ascending=False).reset_index(name='counts')
-
-st.write(merk_import)
-
-
-chart_type_import = st.radio(
-    "Kies grafiektype:",
-    ["Taartdiagram", "Staafdiagram"],
-    horizontal=True, key='merk_import_hist_pie'
-)
-
-if chart_type_import == 'Taartdiagram':
-    merk_import_pie = px.pie(merk_import, values='counts', names='merk')
-    st.plotly_chart(merk_import_pie)
-else:
-    merk_import_hist = px.histogram(merk_import, x='merk', y='counts', color='merk')
-    st.plotly_chart(merk_import_hist)

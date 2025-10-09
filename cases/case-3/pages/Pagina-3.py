@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import geopandas as gpd
 import folium
+import plotly.express as px
 from streamlit_folium import st_folium
 import matplotlib.pyplot as plt
 import numpy as np
@@ -122,17 +123,27 @@ df = pd.read_csv(os.path.join(CASE_DIR,"top20_gemeenten_laadpalen_2025.csv"))
 df = df.sort_values("Laadpalen_per_1000_inwoners", ascending=False)
 laatste_maand_chart = "oktober 2025"
 
-fig, ax = plt.subplots(figsize=(14, 6))
-bars = ax.bar(df["Gemeente"], df["Laadpalen_per_1000_inwoners"])
-ax.set_ylabel("Laadpalen per 1000 inwoners", fontsize=12)
-ax.set_xlabel("Gemeente", fontsize=12)
-ax.set_title(f"Aantal reguliere publieke laadpalen per 1000 inwoners in de 20 grootste gemeenten ({laatste_maand_chart}, Laadinfrastructuur)", fontsize=14)
-ax.set_xticks(range(len(df)))
-ax.set_xticklabels(df["Gemeente"], rotation=45, ha="right", fontsize=10)
-max_ratio = int(np.ceil(df["Laadpalen_per_1000_inwoners"].max()))
-ax.set_yticks(np.arange(0, max_ratio + 1, 1))
-ax.grid(axis='y', linestyle='--', alpha=0.7)
-for bar in bars:
-    height = bar.get_height()
-    ax.text(bar.get_x() + bar.get_width()/2, height + 0.1, f"{height:.2f}", ha='center', va='bottom', fontsize=9)
-st.pyplot(fig)
+# Plotly Express bar chart
+fig = px.bar(
+    df,
+    x="Gemeente",
+    y="Laadpalen_per_1000_inwoners",
+    text=df["Laadpalen_per_1000_inwoners"].round(2),
+    labels={"Laadpalen_per_1000_inwoners": "Laadpalen per 1000 inwoners"},
+    title=f"Aantal reguliere publieke laadpalen per 1000 inwoners in de 20 grootste gemeenten ({laatste_maand_chart}, Laadinfrastructuur)",
+)
+ 
+# Layout aanpassen
+fig.update_traces(textposition='outside')
+fig.update_layout(
+    xaxis_tickangle=-45,
+    xaxis_title="Gemeente",
+    yaxis_title="Laadpalen per 1000 inwoners",
+    yaxis=dict(dtick=1),
+    uniformtext_minsize=10,
+    uniformtext_mode='hide',
+    template='plotly_white'
+)
+ 
+# In Streamlit tonen
+st.plotly_chart(fig)
