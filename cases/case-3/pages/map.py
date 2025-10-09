@@ -42,7 +42,11 @@ gdf = gpd.read_file(geojson_url)
 # -------------------------------
 # Laad gemeente-data
 # -------------------------------
-gemeente_data = pd.read_csv(os.path.join(os.getcwd(), "laadpunten_per_gemeente.csv"))
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+CASE_DIR = os.path.dirname(BASE_DIR)
+
+gemeente_data = pd.read_csv(CASE_DIR, "laadpunten_per_gemeente.csv")
 gemeente_data.columns = gemeente_data.columns.str.strip()
 
 # -------------------------------
@@ -181,7 +185,7 @@ else:
 # -------------------------------
 # Top 20 grootste gemeenten bar chart
 # -------------------------------
-df = pd.read_csv("top20_gemeenten_laadpalen_2025.csv")
+df = pd.read_csv(CASE_DIR, "top20_gemeenten_laadpalen_2025.csv")
 
 # Sorteer op ratio (Laadpalen_per_1000_inwoners)
 df = df.sort_values("Laadpalen_per_1000_inwoners", ascending=False)
