@@ -33,7 +33,7 @@ if pagina == "Pagina 1":
         df_2018[col] = pd.to_numeric(df_2018[col], errors='coerce')
 
     # --- 2022 PKL laden ---
-    df_2022 = pd.read_pickle(os.path.join(CASE_DIR,'charging_data.pkl'))
+    df_2022 = pd.read_pickle(os.path.join(CASE_DIR,'Charging_data.pkl'))
 
     # --- Zet charging_duration om naar uren float ---
     def duration_to_hours(duration):
@@ -750,7 +750,7 @@ if jaar == "Voorspelling":
     # --- Laad data ---
     @st.cache_data
     def load_data():
-        df = pd.read_pickle(os.path.join(CASE_DIR,'charging_data.pkl'))  # laad 2022 data
+        df = pd.read_pickle(os.path.join(CASE_DIR,'Charging_data.pkl'))  # laad 2022 data
         df['start_time'] = pd.to_datetime(df['start_time'])
         df['exit_time'] = pd.to_datetime(df['exit_time'])
         return df
