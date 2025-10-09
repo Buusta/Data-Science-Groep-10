@@ -11,7 +11,7 @@ sns.set_style("whitegrid")
 st.sidebar.header("Navigatie")
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-CASE_DIR = os.path.dirname(BASE_DIR)
+
 
 if True:
     st.title("Laadpaal Data Dashboard")
@@ -20,7 +20,7 @@ if True:
     jaar = st.sidebar.selectbox("Kies dataset of voorspelling:", ["2018", "2022", "Voorspelling"])
 
     # --- 2018 CSV laden ---
-    df_2018 = pd.read_csv(os.path.join(CASE_DIR,'laadpaaldata.csv'))
+    df_2018 = pd.read_csv(os.path.join(BASE_DIR,'laadpaaldata.csv'))
     df_2018['Started'] = df_2018['Started'].replace('2018-02-29 07:37:53', '2018-02-28 07:37:53')
     df_2018['Ended'] = df_2018['Ended'].replace({
         '2018-02-29 07:46:07': '2018-02-28 07:46:07',
@@ -32,7 +32,7 @@ if True:
         df_2018[col] = pd.to_numeric(df_2018[col], errors='coerce')
 
     # --- 2022 PKL laden ---
-    df_2022 = pd.read_pickle(os.path.join(CASE_DIR,'Charging_data.pkl'))
+    df_2022 = pd.read_pickle(os.path.join(BASE_DIR,'Charging_data.pkl'))
 
     # --- Zet charging_duration om naar uren float ---
     def duration_to_hours(duration):
@@ -741,7 +741,7 @@ if jaar == "Voorspelling":
     # --- Laad data ---
     @st.cache_data
     def load_data():
-        df = pd.read_pickle(os.path.join(CASE_DIR,'Charging_data.pkl'))  # laad 2022 data
+        df = pd.read_pickle(os.path.join(BASE_DIR,'Charging_data.pkl'))  # laad 2022 data
         df['start_time'] = pd.to_datetime(df['start_time'])
         df['exit_time'] = pd.to_datetime(df['exit_time'])
         return df
