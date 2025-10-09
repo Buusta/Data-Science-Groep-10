@@ -53,7 +53,7 @@ gdf['aantal_laadpalen'] = gdf['statnaam_norm'].map(lambda x: gemeente_map.get(x,
 # -------------------------------
 # Sidebar keuze
 # -------------------------------
-kaart_keuze = st.sidebar.radio("Kies welke kaart je wilt zien:", ["Choropleth", "Steekproef"])
+kaart_keuze = st.sidebar.radio("Kies welke kaart je wilt zien:", ["Choropleth", "Scatterplot"])
 
 # -------------------------------
 # Choropleth-kaart
@@ -61,10 +61,8 @@ kaart_keuze = st.sidebar.radio("Kies welke kaart je wilt zien:", ["Choropleth", 
 if kaart_keuze == "Choropleth":
     st.title("Laadpalen per gemeente")
     
-    # Begin kaart
     m = folium.Map(location=[52.379189, 5], zoom_start=7)
     
-    # Voeg choropleth toe
     folium.Choropleth(
         geo_data=gdf,
         data=gdf,
@@ -76,7 +74,6 @@ if kaart_keuze == "Choropleth":
         legend_name=f"Aantal reguliere publieke laadpalen"
     ).add_to(m)
     
-    # Tooltip
     for _, row in gdf.iterrows():
         folium.GeoJson(
             row['geometry'],
@@ -87,25 +84,21 @@ if kaart_keuze == "Choropleth":
     st_folium(m, width=1000, height=700)
 
 # -------------------------------
-# Steekproef Scatterplot
+# Scatterplot van individuele laadpalen
 # -------------------------------
 else:
     st.title("Steekproef van 1.000 willekeurig gekozen laadpalen in Nederland")
     
-    # Haal data op via requests
+    # Haal data op
     ocm_url = "https://api.openchargemap.io/v3/poi/?output=json&countrycode=NL&maxresults=1000&compact=true&verbose=false&key=93b912b5-9d70-4b1f-960b-fb80a4c9c017"
     response = requests.get(ocm_url).json()
     
     # Flatten JSON met underscores
     laadpalen = pd.json_normalize(response, sep="_")
-    
-    # Filter op geldige coördinaten
     laadpalen = laadpalen[laadpalen['AddressInfo_Latitude'].notna() & laadpalen['AddressInfo_Longitude'].notna()]
     
-    # Begin kaart
     m = folium.Map(location=[52.379189, 5], zoom_start=7)
     
-    # Voeg CircleMarkers toe
     for _, row in laadpalen.iterrows():
         folium.CircleMarker(
             location=[row['AddressInfo_Latitude'], row['AddressInfo_Longitude']],
