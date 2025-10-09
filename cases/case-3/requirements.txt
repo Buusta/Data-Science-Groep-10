@@ -4,5 +4,6 @@ plotly
 statsmodels
 seaborn
 geopandas
+pydeck
 matplotlib
-folium
+streamlit_folium 
