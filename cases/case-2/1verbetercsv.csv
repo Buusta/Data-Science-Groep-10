@@ -1,0 +1,232 @@
+"flagCode","country","SteamUsers_2024","SteamUsers_2021"
+"IN","India",853800000,535761867
+"BR","Brazil",148000000,139345138
+"ID","Indonesia",112000000,86869372
+"US","United States",98000000,91310325
+"PH","Philippines",88000000,51169091
+"MX","Mexico",77000000,69692482
+"RU","Russia",66700000,66741622
+"TR","Turkey",60000000,47631214
+"EG","Egypt",56000000,35281968
+"PK","Pakistan",52000000,52320587
+"CN","China",,11430965
+"NG","Nigeria",,50964520
+"BD","Bangladesh",,43993350
+"ET","Ethiopia",,16204187
+"JP","Japan",,38594923
+"CD","DR Congo",,9747343
+"VN","Vietnam",,29756248
+"IR","Iran",,174654
+"DE","Germany",,51943633
+"TH","Thailand",,29375849
+"TZ","Tanzania",,9857216
+"GB","United Kingdom",,39752165
+"FR","France",,25120711
+"ZA","South Africa",,28755975
+"IT","Italy",,37309419
+"KE","Kenya",,13888509
+"MM","Myanmar",,19223504
+"CO","Colombia",,28906600
+"KR","South Korea",,13485570
+"SD","Sudan",,9056043
+"UG","Uganda",,4703445
+"ES","Spain",,35308740
+"DZ","Algeria",,10955505
+"IQ","Iraq",,6672460
+"AR","Argentina",,24514881
+"AF","Afghanistan",,4331877
+"YE","Yemen",,3690435
+"CA","Canada",,9068124
+"AO","Angola",,5537773
+"UA","Ukraine",,13032109
+"MA","Morocco",,11978915
+"PL","Poland",,15758825
+"UZ","Uzbekistan",,5100433
+"MY","Malaysia",,22563965
+"MZ","Mozambique",,4116625
+"GH","Ghana",,10107297
+"PE","Peru",,16074975
+"SA","Saudi Arabia",,23192744
+"MG","Madagascar",,2065871
+"CI","Ivory Coast",,9105789
+"CM","Cameroon",,4851101
+"NP","Nepal",,8598619
+"VE","Venezuela",,11256280
+"NE","Niger",,3582610
+"AU","Australia",,7387561
+"KP","North Korea",,103981
+"SY","Syria",,40812
+"ML","Mali",,4184817
+"BF","Burkina Faso",,5345809
+"LK","Sri Lanka",,10992692
+"TW","Taiwan",,9066625
+"MW","Malawi",,2185132
+"ZM","Zambia",,2902871
+"TD","Chad",,714470
+"KZ","Kazakhstan",,7980614
+"CL","Chile",,11079146
+"SO","Somalia",,2095558
+"SN","Senegal",,5204000
+"RO","Romania",,9685782
+"GT","Guatemala",,7726581
+"NL","Netherlands",,13163497
+"EC","Ecuador",,7409385
+"KH","Cambodia",,5619551
+"ZW","Zimbabwe",,3593658
+"GN","Guinea",,2444033
+"BJ","Benin",,2395155
+"RW","Rwanda",,1546984
+"BI","Burundi",,1312153
+"BO","Bolivia",,3673088
+"TN","Tunisia",,4142712
+"SS","South Sudan",,219711
+"HT","Haiti",,2484012
+"BE","Belgium",,4238050
+"JO","Jordan",,2347367
+"DO","Dominican Republic",,4458355
+"AE","United Arab Emirates",,4638234
+"HN","Honduras",,4095276
+"CU","Cuba",,77647
+"TJ","Tajikistan",,1385799
+"PG","Papua New Guinea",,810885
+"SE","Sweden",,5592723
+"CZ","Czechia",,4554126
+"PT","Portugal",,4390721
+"AZ","Azerbaijan",,2456545
+"GR","Greece",,3999898
+"TG","Togo",,1661930
+"HU","Hungary",,3783259
+"IL","Israel",,5965984
+"AT","Austria",,5394778
+"BY","Belarus",,2070279
+"CH","Switzerland",,6809033
+"SL","Sierra Leone",,1621875
+"LA","Laos",,1341378
+"TM","Turkmenistan",,545748
+"LY","Libya",,1314530
+"HK","Hong Kong",,320515
+"KG","Kyrgyzstan",,1597884
+"PY","Paraguay",,3397904
+"NI","Nicaragua",,2532365
+"BG","Bulgaria",,2163800
+"RS","Serbia",,2336841
+"CG","Republic of the Congo",,1937536
+"SV","El Salvador",,3357119
+"DK","Denmark",,2265211
+"SG","Singapore",,4581011
+"LB","Lebanon",,2142703
+"LR","Liberia",,414019
+"FI","Finland",,4465365
+"NO","Norway",,2806105
+"PS","Palestine",,1006964
+"CF","Central African Republic",,514389
+"OM","Oman",,3415944
+"SK","Slovakia",,2628895
+"MR","Mauritania",,1497109
+"IE","Ireland",,2964901
+"NZ","New Zealand",,1678399
+"CR","Costa Rica",,2740632
+"KW","Kuwait",,3184773
+"PA","Panama",,2335852
+"HR","Croatia",,2004312
+"GE","Georgia",,1298669
+"ER","Eritrea",,398569
+"MN","Mongolia",,1153662
+"UY","Uruguay",,1907598
+"PR","Puerto Rico",,1565969
+"BA","Bosnia and Herzegovina",,920578
+"QA","Qatar",,1303890
+"NA","Namibia",,670458
+"MD","Moldova",,1027439
+"AM","Armenia",,809377
+"JM","Jamaica",,1624220
+"LT","Lithuania",,1295329
+"GM","Gambia",,897379
+"AL","Albania",,1194119
+"GA","Gabon",,895639
+"BW","Botswana",,977159
+"LS","Lesotho",,10168
+"GW","Guinea-Bissau",,268982
+"SI","Slovenia",,823465
+"GQ","Equatorial Guinea",,229924
+"LV","Latvia",,1066245
+"MK","North Macedonia",,487000
+"BH","Bahrain",,1122301
+"TT","Trinidad and Tobago",,806104
+"TL","Timor-Leste",,296703
+"CY","Cyprus",,691147
+"EE","Estonia",,596505
+"MU","Mauritius",,691520
+"DJ","Djibouti",,146874
+"FJ","Fiji",,303313
+"KM","Comoros",,12572
+"RE","Reunion",,27734
+"SB","Solomon Islands",,85391
+"GY","Guyana",,205740
+"BT","Bhutan",,221004
+"MO","Macau",,29821
+"LU","Luxembourg",,389938
+"SR","Suriname",,283425
+"ME","Montenegro",,276681
+"EH","Western Sahara",,12917
+"MT","Malta",,284319
+"MV","Maldives",,14617
+"CV","Cape Verde",,17928
+"BN","Brunei",,207126
+"BZ","Belize",,133082
+"BS","Bahamas",,187813
+"IS","Iceland",,170232
+"GP","Guadeloupe",,17980
+"MQ","Martinique",,8661
+"YT","Mayotte",,4718
+"VU","Vanuatu",,57766
+"GF","French Guiana",,14341
+"NC","New Caledonia",,52380
+"BB","Barbados",,172115
+"PF","French Polynesia",,13702
+"WS","Samoa",,6569
+"CW","Curacao",,10227
+"LC","Saint Lucia",,85442
+"GU","Guam",,17041
+"KI","Kiribati",,11826
+"SC","Seychelles",,43534
+"GD","Grenada",,43406
+"FM","Micronesia",,8334
+"AW","Aruba",,45947
+"JE","Jersey",,13614
+"TO","Tonga",,7426
+"VC","Saint Vincent and the Grenadines",,47561
+"AG","Antigua and Barbuda",,50494
+"VI","United States Virgin Islands",,80025
+"IM","Isle of Man",,27916
+"AD","Andorra",,39517
+"KY","Cayman Islands",,15902
+"DM","Dominica",,31633
+"BM","Bermuda",,23489
+"GG","Guernsey",,12036
+"FO","Faroe Islands",,14940
+"GL","Greenland",,19347
+"KN","Saint Kitts and Nevis",,27634
+"TC","Turks and Caicos Islands",,7995
+"AS","American Samoa",,96110
+"SX","Sint Maarten",,3827
+"MP","Northern Mariana Islands",,10223
+"LI","Liechtenstein",,20549
+"GI","Gibraltar",,14565
+"VG","British Virgin Islands",,17685
+"MC","Monaco",,34650
+"MH","Marshall Islands",,5630
+"SM","San Marino",,12172
+"PW","Palau",,8424
+"AI","Anguilla",,31541
+"CK","Cook Islands",,30362
+"NR","Nauru",,5965
+"BL","Saint Barthelemy",,8091
+"WF","Wallis and Futuna",,9537
+"TV","Tuvalu",,7648
+"PM","Saint Pierre and Miquelon",,5320
+"FK","Falkland Islands",,16750
+"TK","Tokelau",,5228
+"NU","Niue",,7993
+"VA","Vatican City",,57962
+,"Total",1611500000,2245864201
